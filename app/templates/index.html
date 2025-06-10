@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C Programming Practice</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1e1e1e;
+            color: #ffffff;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Nickname Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: #2d2d2d;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            border: 1px solid #444;
+        }
+
+        .modal h2 {
+            margin-bottom: 20px;
+            color: #4CAF50;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            background: #1e1e1e;
+            border: 2px solid #444;
+            border-radius: 8px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .modal input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .modal button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .modal button:hover {
+            background: #45a049;
+        }
+
+        /* Header */
+        .header {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #444;
+        }
+
+        .user-info h2 {
+            color: #4CAF50;
+            margin-bottom: 5px;
+        }
+
+        .user-info p {
+            color: #888;
+        }
+
+        /* Game Alert */
+        .game-alert {
+            background: linear-gradient(135deg, #FF6B35, #F7931E);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            display: none;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 107, 53, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0); }
+        }
+
+        .game-alert h3 {
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+        }
+
+        .join-button {
+            background: white;
+            color: #FF6B35;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        .join-button:hover {
+            background: #f0f0f0;
+        }
+
+        /* Question Card */
+        .question-card {
+            background: #2d2d2d;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4CAF50;
+            display: none;
+        }
+
+        .question-card.active {
+            display: block;
+        }
+
+        .question-title {
+            font-size: 1.5rem;
+            color: #4CAF50;
+            margin-bottom: 15px;
+        }
+
+        .question-description {
+            color: #ccc;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .question-hint {
+            background: #1e1e1e;
+            padding: 10px;
+            border-radius: 5px;
+            color: #FFD700;
+            font-style: italic;
+            border-left: 3px solid #FFD700;
+        }
+
+        /* Code Editor */
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            min-height: 500px;
+        }
+
+        .editor-section {
+            background: #2d2d2d;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #444;
+        }
+
+        .editor-header {
+            background: #1e1e1e;
+            padding: 15px 20px;
+            color: #4CAF50;
+            font-weight: bold;
+            border-bottom: 1px solid #444;
+        }
+
+        /* Monaco Editor Container */
+        #editor {
+            height: 400px;
+            border-radius: 0;
+        }
+
+        /* Mobile Virtual Keyboard */
+        .mobile-keyboard {
+            display: none;
+            background: #2d2d2d;
+            padding: 10px;
+            border-top: 1px solid #444;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .mobile-key {
+            background: #1e1e1e;
+            color: white;
+            border: 1px solid #444;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: monospace;
+        }
+
+        .mobile-key:hover {
+            background: #333;
+        }
+
+        .mobile-key.wide {
+            flex: 1;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 10px;
+            padding: 15px 20px;
+            background: #1e1e1e;
+            border-top: 1px solid #444;
+        }
+
+        .run-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .run-button:hover {
+            background: #45a049;
+        }
+
+        .run-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .clear-button {
+            background: #666;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .clear-button:hover {
+            background: #777;
+        }
+
+        /* Output */
+        .output {
+            background: #1e1e1e;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            color: #ccc;
+        }
+
+        .output.error {
+            color: #ff6b6b;
+        }
+
+        .output.success {
+            color: #4CAF50;
+        }
+
+        /* Success Message */
+        .success-message {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 20px;
+            text-align: center;
+            font-weight: bold;
+            display: none;
+        }
+
+        /* Loading indicator */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 400px;
+            color: #4CAF50;
+            font-size: 16px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+            
+            .mobile-keyboard {
+                display: flex;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Nickname Modal -->
+    <div id="nicknameModal" class="modal">
+        <div class="modal-content">
+            <h2>🚀 Welcome to C Practice!</h2>
+            <p>Enter your nickname to start coding:</p>
+            <input type="text" id="nicknameInput" placeholder="Your nickname" maxlength="20">
+            <button onclick="setNickname()">Start Coding</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="user-info">
+                <h2>Welcome, <span id="nicknameDisplay">Coder</span>!</h2>
+                <p>Ready to write some C code?</p>
+            </div>
+            <div>
+                <a href="/teacher" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px;">👩‍🏫 Teacher Login</a>
+            </div>
+        </div>
+
+        <!-- Game Alert -->
+        <div id="gameAlert" class="game-alert">
+            <h3>🎮 Live Coding Challenge!</h3>
+            <p>Your teacher has started a coding challenge. Join now!</p>
+            <button class="join-button" onclick="joinGame()">Join Challenge</button>
+        </div>
+
+        <!-- Question Card -->
+        <div id="questionCard" class="question-card">
+            <div class="question-title" id="questionTitle">Challenge Title</div>
+            <div class="question-description" id="questionDescription">Challenge description goes here...</div>
+            <div class="question-hint">
+                💡 <span id="questionHint">Hint will appear here</span>
+            </div>
+        </div>
+
+        <!-- Code Editor -->
+        <div class="editor-container">
+            <div class="editor-section">
+                <div class="editor-header">📝 Code Editor</div>
+                <div id="editor">
+                    <div class="loading">⏳ Loading Monaco Editor...</div>
+                </div>
+                <div class="mobile-keyboard" id="mobileKeyboard">
+                    <button class="mobile-key" onclick="insertText('{')">{</button>
+                    <button class="mobile-key" onclick="insertText('}')">}</button>
+                    <button class="mobile-key" onclick="insertText('(')">(</button>
+                    <button class="mobile-key" onclick="insertText(')')">)</button>
+                    <button class="mobile-key" onclick="insertText(';')">;</button>
+                    <button class="mobile-key" onclick="insertText('&quot;')">"</button>
+                    <button class="mobile-key" onclick="insertText('&apos;')">'</button>
+                    <button class="mobile-key wide" onclick="insertText('    ')">TAB</button>
+                </div>
+                <div class="controls">
+                    <button id="runButton" class="run-button" onclick="runCode()">▶ Run Code</button>
+                    <button class="clear-button" onclick="clearCode()">🗑 Clear</button>
+                </div>
+                <div id="successMessage" class="success-message"></div>
+            </div>
+
+            <div class="editor-section">
+                <div class="editor-header">📤 Output</div>
+                <div id="output" class="output">Run your code to see output here...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monaco Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+    
+    <script>
+        let currentNickname = '';
+        let gameJoined = false;
+        let monacoEditor = null;
+        let lastGameStatus = null; // Track last game status to prevent unnecessary updates
+
+        // Initialize Monaco Editor with proper loading state management
+        function initMonacoEditor() {
+            const editorContainer = document.getElementById('editor');
+            
+            try {
+                require.config({ 
+                    paths: { 
+                        'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' 
+                    }
+                });
+                
+                require(['vs/editor/editor.main'], function () {
+                    const defaultCode = `#include <stdio.h>
+
+int main() {
+    printf("Hello, World!\\n");
+    return 0;
+}`;
+
+                    // Clear loading message
+                    editorContainer.innerHTML = '';
+
+                    monacoEditor = monaco.editor.create(editorContainer, {
+                        value: defaultCode,
+                        language: 'c',
+                        theme: 'vs-dark',
+                        fontSize: 14,
+                        fontFamily: "'Courier New', 'Monaco', 'Menlo', monospace",
+                        minimap: { enabled: false },
+                        scrollBeyondLastLine: false,
+                        automaticLayout: true,
+                        bracketPairColorization: { enabled: true },
+                        suggest: {
+                            showKeywords: true,
+                            showSnippets: true,
+                            showFunctions: true
+                        },
+                        quickSuggestions: {
+                            other: true,
+                            comments: true,
+                            strings: true
+                        },
+                        wordBasedSuggestions: true,
+                        parameterHints: { enabled: true },
+                        formatOnType: true,
+                        formatOnPaste: true,
+                        autoIndent: 'full',
+                        tabSize: 4,
+                        insertSpaces: true
+                    });
+
+                    // Add custom C completions
+                    monaco.languages.registerCompletionItemProvider('c', {
+                        provideCompletionItems: function(model, position) {
+                            const suggestions = [
+                                {
+                                    label: 'printf',
+                                    kind: monaco.languages.CompletionItemKind.Function,
+                                    insertText: 'printf("${1:Hello, World!\\n}");',
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    documentation: 'Print formatted output to stdout'
+                                },
+                                {
+                                    label: 'scanf',
+                                    kind: monaco.languages.CompletionItemKind.Function,
+                                    insertText: 'scanf("${1:%d}", &${2:variable});',
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    documentation: 'Read formatted input from stdin'
+                                },
+                                {
+                                    label: 'for loop',
+                                    kind: monaco.languages.CompletionItemKind.Snippet,
+                                    insertText: 'for (int ${1:i} = 0; ${1:i} < ${2:10}; ${1:i}++) {\n\t${3:// code}\n}',
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    documentation: 'For loop template'
+                                },
+                                {
+                                    label: 'while loop',
+                                    kind: monaco.languages.CompletionItemKind.Snippet,
+                                    insertText: 'while (${1:condition}) {\n\t${2:// code}\n}',
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    documentation: 'While loop template'
+                                },
+                                {
+                                    label: 'if statement',
+                                    kind: monaco.languages.CompletionItemKind.Snippet,
+                                    insertText: 'if (${1:condition}) {\n\t${2:// code}\n}',
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    documentation: 'If statement template'
+                                },
+                                {
+                                    label: 'main function',
+                                    kind: monaco.languages.CompletionItemKind.Snippet,
+                                    insertText: 'int main() {\n\t${1:// your code here}\n\treturn 0;\n}',
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    documentation: 'Main function template'
+                                }
+                            ];
+                            return { suggestions: suggestions };
+                        }
+                    });
+
+                    console.log('Monaco Editor loaded successfully');
+                }, function(error) {
+                    console.error('Failed to load Monaco Editor:', error);
+                    createFallbackEditor();
+                });
+            } catch (error) {
+                console.error('Monaco Editor initialization failed:', error);
+                createFallbackEditor();
+            }
+            
+            // Fallback to simple textarea after 3 seconds if Monaco doesn't load
+            setTimeout(function() {
+                if (!monacoEditor) {
+                    console.log('Monaco Editor timeout, using fallback');
+                    createFallbackEditor();
+                }
+            }, 3000);
+        }
+
+        // Create fallback textarea editor
+        function createFallbackEditor() {
+            const editorContainer = document.getElementById('editor');
+            const defaultCode = `#include <stdio.h>
+
+int main() {
+    printf("Hello, World!\\n");
+    return 0;
+}`;
+            
+            editorContainer.innerHTML = `
+                <div style="display: flex; height: 400px;">
+                    <div id="lineNumbers" style="background: #1a1a1a; color: #666; padding: 20px 10px; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.5; border-right: 1px solid #333; user-select: none; min-width: 50px; text-align: right;"></div>
+                    <textarea id="fallbackEditor" style="flex: 1; background: #1e1e1e; color: #ffffff; border: none; padding: 20px; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.5; resize: none; outline: none;">${defaultCode}</textarea>
+                </div>
+            `;
+            
+            const textarea = document.getElementById('fallbackEditor');
+            updateLineNumbers();
+            
+            textarea.addEventListener('input', updateLineNumbers);
+            textarea.addEventListener('scroll', function() {
+                document.getElementById('lineNumbers').scrollTop = textarea.scrollTop;
+            });
+            
+            // Add tab support
+            textarea.addEventListener('keydown', function(e) {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    textarea.value = textarea.value.substring(0, start) + '    ' + textarea.value.substring(end);
+                    textarea.selectionStart = textarea.selectionEnd = start + 4;
+                    updateLineNumbers();
+                }
+            });
+            
+            function updateLineNumbers() {
+                const lineNumbers = document.getElementById('lineNumbers');
+                const lines = textarea.value.split('\n').length;
+                let numbersHtml = '';
+                for (let i = 1; i <= lines; i++) {
+                    numbersHtml += i + '\n';
+                }
+                lineNumbers.textContent = numbersHtml;
+            }
+            
+            console.log('Fallback editor created');
+        }
+
+        // Initialize app with proper state management
+        window.addEventListener('load', function() {
+            // Check if user has nickname
+            const savedNickname = sessionStorage.getItem('nickname');
+            if (savedNickname) {
+                currentNickname = savedNickname;
+                document.getElementById('nicknameModal').style.display = 'none';
+                document.getElementById('nicknameDisplay').textContent = currentNickname;
+            } else {
+                document.getElementById('nicknameInput').focus();
+            }
+            
+            // Initialize Monaco Editor
+            initMonacoEditor();
+            
+            // IMPORTANT: Hide game alert on initial load
+            document.getElementById('gameAlert').style.display = 'none';
+            
+            // Wait a bit for server to be ready, then start checking
+            setTimeout(() => {
+                checkGameStatus();
+                setInterval(checkGameStatus, 10000);
+            }, 1000);
+        });
+
+        function setNickname() {
+            const nickname = document.getElementById('nicknameInput').value.trim();
+            if (nickname) {
+                currentNickname = nickname;
+                sessionStorage.setItem('nickname', nickname);
+                document.getElementById('nicknameModal').style.display = 'none';
+                document.getElementById('nicknameDisplay').textContent = currentNickname;
+                checkGameStatus();
+            }
+        }
+
+        // Enable Enter key in nickname input
+        document.getElementById('nicknameInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                setNickname();
+            }
+        });
+
+        function insertText(text) {
+            if (monacoEditor) {
+                const selection = monacoEditor.getSelection();
+                const id = { major: 1, minor: 1 };
+                const op = {
+                    identifier: id,
+                    range: selection,
+                    text: text,
+                    forceMoveMarkers: true
+                };
+                monacoEditor.executeEdits("my-source", [op]);
+                monacoEditor.focus();
+            } else {
+                // Fallback for textarea
+                const textarea = document.getElementById('fallbackEditor');
+                if (textarea) {
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    textarea.value = textarea.value.substring(0, start) + text + textarea.value.substring(end);
+                    textarea.selectionStart = textarea.selectionEnd = start + text.length;
+                    textarea.focus();
+                    // Update line numbers if they exist
+                    if (document.getElementById('lineNumbers')) {
+                        updateLineNumbers();
+                    }
+                }
+            }
+        }
+
+        function clearCode() {
+            if (monacoEditor) {
+                monacoEditor.setValue('');
+            } else {
+                const textarea = document.getElementById('fallbackEditor');
+                if (textarea) {
+                    textarea.value = '';
+                    // Update line numbers if they exist
+                    if (document.getElementById('lineNumbers')) {
+                        updateLineNumbers();
+                    }
+                }
+            }
+            document.getElementById('output').textContent = 'Code cleared. Write some C code and run it!';
+            document.getElementById('output').className = 'output';
+        }
+
+        function getEditorValue() {
+            if (monacoEditor) {
+                return monacoEditor.getValue();
+            } else {
+                const textarea = document.getElementById('fallbackEditor');
+                return textarea ? textarea.value : '';
+            }
+        }
+
+        // Server communication functions - prevent unnecessary DOM updates
+        async function checkGameStatus() {
+            try {
+                const response = await fetch('/api/game/status');
+                
+                if (response.ok) {
+                    const status = await response.json();
+                    
+                    console.log('Game status:', status); // Debug log
+                    
+                    // Only update DOM if status actually changed
+                    if (!lastGameStatus || 
+                        lastGameStatus.active !== status.active || 
+                        lastGameStatus.current_question !== status.current_question) {
+                        
+                        lastGameStatus = status;
+                        
+                        // Very explicit check: only show if active is exactly true
+                        if (status.active === true && !gameJoined) {
+                            console.log('Showing game alert - game is active');
+                            document.getElementById('gameAlert').style.display = 'block';
+                        } else {
+                            console.log('Hiding game alert - game inactive or already joined');
+                            document.getElementById('gameAlert').style.display = 'none';
+                        }
+                        
+                        if (status.active === false) {
+                            // Game is explicitly inactive
+                            document.getElementById('questionCard').classList.remove('active');
+                            gameJoined = false;
+                        }
+                        
+                        // Show current question if user has joined and there's an active question
+                        if (gameJoined && status.current_question) {
+                            displayQuestion(status.current_question);
+                        }
+                    }
+                } else {
+                    console.log('Server response not OK:', response.status);
+                    // Only update if we haven't already set this state
+                    if (!lastGameStatus || lastGameStatus.active !== false) {
+                        document.getElementById('gameAlert').style.display = 'none';
+                        lastGameStatus = { active: false };
+                    }
+                }
+                
+            } catch (error) {
+                console.log('Network error checking game status:', error.message);
+                // Network error or server not available - only update if status changed
+                if (!lastGameStatus || lastGameStatus.active !== false) {
+                    document.getElementById('gameAlert').style.display = 'none';
+                    lastGameStatus = { active: false };
+                }
+            }
+        }
+
+        async function joinGame() {
+            try {
+                const response = await fetch('/api/game/join', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname: currentNickname })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    gameJoined = true;
+                    document.getElementById('gameAlert').style.display = 'none';
+                    
+                    if (result.question) {
+                        displayQuestion(result.question);
+                    }
+                } else {
+                    alert(result.error || 'Failed to join game');
+                }
+            } catch (error) {
+                console.error('Failed to join game:', error);
+                alert('Failed to join game. Server not available.');
+            }
+        }
+
+        function displayQuestion(question) {
+            document.getElementById('questionTitle').textContent = question.title;
+            document.getElementById('questionDescription').textContent = question.description;
+            document.getElementById('questionHint').textContent = question.hint || 'No hint available';
+            document.getElementById('questionCard').classList.add('active');
+        }
+
+        async function runCode() {
+            const code = getEditorValue();
+            const button = document.getElementById('runButton');
+            const output = document.getElementById('output');
+            const successMessage = document.getElementById('successMessage');
+
+            if (!code.trim()) {
+                alert('Please write some code first!');
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = '⏳ Running...';
+            output.textContent = 'Compiling and running your code...';
+            output.className = 'output';
+            successMessage.style.display = 'none';
+
+            try {
+                const response = await fetch('/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: code,
+                        nickname: currentNickname
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Server not available');
+                }
+
+                const result = await response.json();
+                
+                if (result.error) {
+                    output.className = 'output error';
+                    output.textContent = '❌ Error:\n' + result.error;
+                } else {
+                    output.className = 'output success';
+                    output.textContent = '✅ Output:\n' + (result.output || '(No output produced)');
+                    
+                    if (result.stderr) {
+                        output.textContent += '\n\n⚠️ Warnings:\n' + result.stderr;
+                    }
+
+                    // Handle challenge completion
+                    if (result.challenge_cleared) {
+                        successMessage.style.display = 'block';
+                        successMessage.textContent = '🎉 Correct! Well done!';
+                        
+                        setTimeout(() => {
+                            successMessage.style.display = 'none';
+                        }, 3000);
+                    }
+                }
+            } catch (error) {
+                output.className = 'output error';
+                output.textContent = '❌ Server Error:\nServer is not available. This is a demo version.\n\nYour code looks like:\n' + code + '\n\nTo run C code locally:\n1. Install a C compiler (gcc)\n2. Save your code as program.c\n3. Compile: gcc -o program program.c\n4. Run: ./program';
+            }
+
+            button.disabled = false;
+            button.textContent = '▶ Run Code';
+        }
+    </script>
+</body>
+</html>

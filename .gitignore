@@ -1,0 +1,98 @@
+# Judge0 Self-Hosted (exclude entire folder)
+judge0/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+.env
+
+# Flask
+instance/
+.webassets-cache
+*.db
+*.sqlite3
+
+# Game State Files
+game_state.json
+progress.json
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# Docker (if you want to exclude docker files)
+# docker-compose.override.yml
+# Dockerfile.local
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Node modules (if you add any frontend build tools later)
+node_modules/
+npm-debug.log*
+
+# Environment variables (if you have local config)
+.env.local
+.env.development
+.env.production
+
+# Backup files
+*.bak
+*.backup
+
+# OS generated files
+*.DS_Store*
+ehthumbs.db
+Icon?

@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  c-programming-platform:
+    build: .
+    ports:
+      - "5050:5000"
+    volumes:
+      - ./app:/app
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    restart: unless-stopped
+    container_name: c-programming-classroom
