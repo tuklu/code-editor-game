@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify, session
+import secrets
 import subprocess
 import os
 import json
@@ -8,7 +9,7 @@ from datetime import datetime
 import uuid
 
 app = Flask(__name__)
-app.secret_key = ''
+app.secret_key = secrets.token_hex(32)
 
 # Configuration
 TEACHER_USERNAME = 'tuklu15'
