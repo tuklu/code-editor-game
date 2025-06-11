@@ -2,14 +2,18 @@
 let monacoEditor = null;
 let editorInitialized = false;
 
-// Monaco Editor initialization with proper loading state management
+/**
+ * Initialize Monaco Editor with fallback strategy.
+ * Uses dynamic loading to avoid blocking the main thread and provides
+ * a textarea fallback for environments where Monaco fails to load.
+ */
 function initMonacoEditor() {
-    console.log('🎨 Starting Monaco Editor initialization...');
+    console.log('Starting Monaco Editor initialization...');
     
     const editorContainer = document.getElementById('editor');
     
     try {
-        // Set up Monaco Environment first
+        // Configure Monaco Environment before loading to prevent worker issues
         window.MonacoEnvironment = {
             getWorkerUrl: function(workerId, label) {
                 return `data:text/javascript;charset=utf-8,${encodeURIComponent(`
@@ -21,11 +25,11 @@ function initMonacoEditor() {
             }
         };
 
-        // Load Monaco dynamically
+        // Dynamic loading prevents blocking and allows graceful fallback
         const monacoScript = document.createElement('script');
         monacoScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js';
         monacoScript.onload = function() {
-            console.log('✅ Monaco loader script loaded');
+            console.log('Monaco loader script loaded');
             
             require.config({ 
                 paths: { 
@@ -34,30 +38,30 @@ function initMonacoEditor() {
             });
             
             require(['vs/editor/editor.main'], function () {
-                console.log('✅ Monaco editor main loaded');
+                console.log('Monaco editor main loaded');
                 createMonacoEditor();
             }, function(error) {
-                console.error('❌ Failed to load Monaco Editor main:', error);
+                console.error('Failed to load Monaco Editor main:', error);
                 createFallbackEditor();
             });
         };
         
         monacoScript.onerror = function() {
-            console.error('❌ Failed to load Monaco loader script');
+            console.error('Failed to load Monaco loader script');
             createFallbackEditor();
         };
         
         document.head.appendChild(monacoScript);
         
-        // Fallback timeout
+        // Timeout ensures UI doesn't hang indefinitely on slow connections
         setTimeout(function() {
             if (!editorInitialized) {
-                console.log('⏰ Monaco Editor timeout, using fallback');
+                console.log('Monaco Editor timeout, using fallback');
                 createFallbackEditor();
             }
         }, 5000);
     } catch (error) {
-        console.error('❌ Monaco Editor initialization failed:', error);
+        console.error('Monaco Editor initialization failed:', error);
         createFallbackEditor();
     }
 }
@@ -72,7 +76,6 @@ int main() {
 }`;
 
     try {
-        // Clear loading message
         editorContainer.innerHTML = '';
 
         monacoEditor = monaco.editor.create(editorContainer, {
@@ -104,7 +107,7 @@ int main() {
             insertSpaces: true
         });
 
-        // Add custom C completions
+        // Custom C completions to improve developer experience
         monaco.languages.registerCompletionItemProvider('c', {
             provideCompletionItems: function(model, position) {
                 const suggestions = [
@@ -142,25 +145,28 @@ int main() {
         });
 
         editorInitialized = true;
-        console.log('✅ Monaco Editor created successfully');
+        console.log('Monaco Editor created successfully');
 
-        // IMPORTANT: Set global reference for app.js
+        // Global references required for integration with app.js
         window.monacoEditor = monacoEditor;
         window.getEditorValue = function() {
             return monacoEditor.getValue();
         };
 
-        console.log('✅ Global Monaco references set');
+        console.log('Global Monaco references set');
         
     } catch (error) {
-        console.error('❌ Error creating Monaco Editor:', error);
+        console.error('Error creating Monaco Editor:', error);
         createFallbackEditor();
     }
 }
 
-// Create fallback textarea editor
+/**
+ * Creates a textarea-based fallback editor with line numbers.
+ * Provides basic editing functionality when Monaco fails to load.
+ */
 function createFallbackEditor() {
-    if (editorInitialized) return; // Don't create fallback if Monaco is already working
+    if (editorInitialized) return;
     
     const editorContainer = document.getElementById('editor');
     const defaultCode = `#include <stdio.h>
@@ -185,7 +191,7 @@ int main() {
         document.getElementById('lineNumbers').scrollTop = textarea.scrollTop;
     });
     
-    // Add tab support
+    // Tab key support for proper indentation
     textarea.addEventListener('keydown', function(e) {
         if (e.key === 'Tab') {
             e.preventDefault();
@@ -208,10 +214,12 @@ int main() {
     }
     
     editorInitialized = true;
-    console.log('✅ Fallback editor created');
+    console.log('Fallback editor created');
 }
 
-// Utility functions for editor
+/**
+ * Gets the current editor content, handling both Monaco and fallback editors.
+ */
 function getEditorValue() {
     if (monacoEditor) {
         return monacoEditor.getValue();
@@ -221,6 +229,9 @@ function getEditorValue() {
     }
 }
 
+/**
+ * Inserts text at the current cursor position in either editor type.
+ */
 function insertText(text) {
     if (monacoEditor) {
         const selection = monacoEditor.getSelection();
@@ -241,13 +252,15 @@ function insertText(text) {
             textarea.value = textarea.value.substring(0, start) + text + textarea.value.substring(end);
             textarea.selectionStart = textarea.selectionEnd = start + text.length;
             textarea.focus();
-            // Update line numbers if they exist
             const updateLineNumbers = window.updateLineNumbers;
             if (updateLineNumbers) updateLineNumbers();
         }
     }
 }
 
+/**
+ * Clears the editor content and resets output display.
+ */
 function clearCode() {
     if (monacoEditor) {
         monacoEditor.setValue('');
@@ -255,7 +268,6 @@ function clearCode() {
         const textarea = document.getElementById('fallbackEditor');
         if (textarea) {
             textarea.value = '';
-            // Update line numbers if they exist
             const updateLineNumbers = window.updateLineNumbers;
             if (updateLineNumbers) updateLineNumbers();
         }

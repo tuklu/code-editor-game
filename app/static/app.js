@@ -15,7 +15,7 @@ const maxRetries = 3;
 // Socket.IO connection
 let socket;
 
-// Simple editor value getter - NO RECURSION
+// Editor abstraction - handles Monaco/fallback gracefully to avoid recursion
 function getCodeFromEditor() {
     // Try Monaco editor first
     if (window.monacoEditor && window.monacoEditor.getValue) {
@@ -26,24 +26,23 @@ function getCodeFromEditor() {
         }
     }
     
-    // Try fallback textarea
+    // Fallback to textarea
     const textarea = document.getElementById('fallbackEditor');
     if (textarea) {
         return textarea.value;
     }
     
-    // Last resort - empty string
     console.warn('No editor found');
     return '';
 }
 
-// Initialize Socket.IO PTY namespace
+// Initialize Socket.IO PTY namespace with production-grade retry configuration
 function initializeSocket() {
     if (socket) {
         socket.disconnect();
     }
     
-    console.log('🔌 Initializing socket connection...');
+    console.log('Initializing socket connection...');
     
     socket = io('/pty', {
         transports: ['polling', 'websocket'],
@@ -52,47 +51,42 @@ function initializeSocket() {
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
-        forceNew: true
+        forceNew: true // Prevents connection reuse issues in Docker environments
     });
     
     setupSocketListeners();
 }
 
-// New function to detect actual program completion
+// Detects actual program completion to prevent premature UI state changes
+// Required because partial output can contain misleading completion-like text
 function isProgramComplete(data) {
-    // Check for definitive program completion indicators
     const completionIndicators = [
         'Program completed successfully',
         'Program exited with code',
         'Program execution timed out',
         'Program terminated',
-        'Compilation failed',
-        '✅ Program completed successfully',
-        '❌ Program exited with code',
-        '⏰ Program execution timed out',
-        '🛑 Program terminated'
+        'Compilation failed'
     ];
     
-    // Check for the separator line that indicates end of execution
+    // Check for separator line that indicates end of server-side execution
     const hasSeparator = data.includes('─'.repeat(20)) || data.includes('─'.repeat(50));
     
-    // Check for any completion indicator
     const hasCompletionIndicator = completionIndicators.some(indicator => 
         data.includes(indicator)
     );
     
-    // Program is complete if we have both a separator and completion indicator,
-    // OR if we have a strong completion indicator
+    // Conservative approach: require both separator and indicator for most cases
+    // Strong indicators can trigger completion alone for reliability
     return (hasSeparator && hasCompletionIndicator) || 
            data.includes('Program completed successfully') ||
            data.includes('Program exited with code') ||
            data.includes('Compilation failed');
 }
 
-// Enhanced Socket Listeners with Better Program State Detection
+// Socket event handlers with enhanced state management for production reliability
 function setupSocketListeners() {
     socket.on('connect', () => {
-        console.log('✅ Socket.IO PTY connected - ID:', socket.id);
+        console.log('Socket.IO PTY connected - ID:', socket.id);
         connectionAttempts = 0;
         
         if (runButton) runButton.disabled = false;
@@ -102,9 +96,9 @@ function setupSocketListeners() {
         }
         if (reconnectButton) reconnectButton.style.display = 'none';
         
-        // Update connection status
+        // Show temporary connection status for user feedback
         if (connectionStatus) {
-            connectionStatus.textContent = '✅ Connected';
+            connectionStatus.textContent = 'Connected';
             connectionStatus.className = 'connection-status connected';
             connectionStatus.style.display = 'block';
             setTimeout(() => {
@@ -112,43 +106,43 @@ function setupSocketListeners() {
             }, 3000);
         }
         
-        // Reset UI state on fresh connection
+        // Reset UI state only if no program is currently running
         if (!programRunning) {
             resetUIState();
         }
     });
     
     socket.on('pty-output', (data) => {
-        console.log('📤 Received PTY output length:', data.length);
+        console.log('Received PTY output length:', data.length);
         if (output) {
             output.textContent += data;
             output.scrollTop = output.scrollHeight;
         }
         
-        // Enhanced input detection - ONLY highlight input field, don't change button state
+        // Input detection - highlight input field but preserve stop button functionality
+        // This prevents race conditions where users lose the ability to stop hung programs
         if ((data.includes('Enter') || data.includes('input') || data.includes('scanf')) && 
             (data.includes(':') || data.includes('?')) && 
             programRunning && inputField) {
             inputField.style.borderColor = '#FFD700';
-            inputField.placeholder = "🎯 Program waiting for input - type here and press Enter";
+            inputField.placeholder = "Program waiting for input - type here and press Enter";
             inputField.focus();
             
-            // Keep the stop button active during input - program is still running!
-            console.log('🔍 Program asking for input, but keeping stop button active');
+            console.log('Program asking for input, keeping stop button active');
         }
         
-        // ONLY reset UI state on ACTUAL program completion/termination
+        // Only reset UI on confirmed program termination to prevent premature state changes
         if (isProgramComplete(data)) {
-            console.log('✅ Program actually finished, resetting UI state');
+            console.log('Program completion detected, resetting UI state');
             setTimeout(resetUIState, 500);
         }
     });
     
     socket.on('disconnect', (reason) => {
-        console.log('❌ Socket.IO PTY disconnected:', reason);
+        console.log('Socket.IO PTY disconnected:', reason);
         
         if (connectionAttempts < maxRetries && output) {
-            output.textContent += `\n⚠️ Connection lost (${reason}), reconnecting...\n`;
+            output.textContent += `\nConnection lost (${reason}), reconnecting...\n`;
         }
         
         if (runButton) runButton.disabled = true;
@@ -160,26 +154,26 @@ function setupSocketListeners() {
     });
     
     socket.on('connect_error', (error) => {
-        console.error('❌ Socket.IO connection error:', error);
+        console.error('Socket.IO connection error:', error);
         connectionAttempts++;
         
         if (connectionAttempts >= maxRetries && output) {
-            output.textContent += `\n❌ Failed to connect after ${maxRetries} attempts.\n`;
-            output.textContent += '🔄 Click the Reconnect button to try again.\n';
+            output.textContent += `\nFailed to connect after ${maxRetries} attempts.\n`;
+            output.textContent += 'Click the Reconnect button to try again.\n';
             if (reconnectButton) reconnectButton.style.display = 'inline-block';
             if (runButton) runButton.disabled = true;
             if (inputField) inputField.disabled = true;
         } else if (output) {
-            output.textContent += `\n⚠️ Connection attempt ${connectionAttempts} failed, retrying...\n`;
+            output.textContent += `\nConnection attempt ${connectionAttempts} failed, retrying...\n`;
         }
     });
     
     socket.on('reconnect', (attemptNumber) => {
-        console.log('🔄 Socket.IO reconnected after', attemptNumber, 'attempts');
+        console.log('Socket.IO reconnected after', attemptNumber, 'attempts');
         connectionAttempts = 0;
         
         if (!programRunning && output) {
-            output.textContent += `\n🔗 Reconnected successfully!\n`;
+            output.textContent += `\nReconnected successfully!\n`;
         }
         
         if (runButton) runButton.disabled = false;
@@ -190,18 +184,18 @@ function setupSocketListeners() {
     });
 }
 
-// Enhanced resetUIState with better logging
+// Resets UI to initial state after confirmed program termination
 function resetUIState() {
-    console.log('🔄 Resetting UI state - Program actually finished');
+    console.log('Resetting UI state - Program terminated');
     programRunning = false;
     
-    // Update the single button to "Run Code" state
+    // Toggle button back to run state
     if (runButton) {
         runButton.disabled = false;
-        runButton.textContent = '▶ Run Code';
-        runButton.className = 'run-button'; // Remove any additional classes
+        runButton.textContent = 'Run Code';
+        runButton.className = 'run-button';
         runButton.style.background = '#4CAF50';
-        console.log('✅ Button reset to Run Code state');
+        console.log('Button reset to Run Code state');
     }
     
     if (inputField) {
@@ -209,20 +203,19 @@ function resetUIState() {
         inputField.placeholder = "Type input here and press Enter...";
     }
     
-    // Clear any pending input focus
+    // Clear focus to prevent accidental input
     if (inputField && document.activeElement === inputField) {
         inputField.blur();
     }
 }
 
 function reconnectSocket() {
-    if (output) output.textContent += '\n🔄 Manually reconnecting...\n';
+    if (output) output.textContent += '\nManually reconnecting...\n';
     if (reconnectButton) reconnectButton.style.display = 'none';
     connectionAttempts = 0;
     
-    // Show connecting status
     if (connectionStatus) {
-        connectionStatus.textContent = '🔄 Reconnecting...';
+        connectionStatus.textContent = 'Reconnecting...';
         connectionStatus.className = 'connection-status connecting';
         connectionStatus.style.display = 'block';
     }
@@ -230,95 +223,93 @@ function reconnectSocket() {
     initializeSocket();
 }
 
-// Code Execution Functions - TOGGLE BUTTON
+// Toggle-based code execution - single button handles run/stop functionality
 function runCode() {
-    // If program is currently running, stop it instead
+    // Toggle: if program running, stop it instead
     if (programRunning) {
         stopProgram();
         return;
     }
     
-    console.log('🚀 runCode called');
+    console.log('runCode called');
     
-    // Get code directly without recursion
     const code = getCodeFromEditor().trim();
     
     if (!code) {
-        if (output) output.textContent += '❌ No code to run\n';
+        if (output) output.textContent += 'No code to run\n';
         return;
     }
     
     if (!socket || !socket.connected) {
-        if (output) output.textContent += '❌ Not connected to server. Attempting to reconnect...\n';
+        if (output) output.textContent += 'Not connected to server. Attempting to reconnect...\n';
         initializeSocket();
         
-        // Retry after a delay
+        // Retry mechanism with reasonable timeout
         setTimeout(() => {
             if (socket && socket.connected) {
                 runCode();
             } else if (output) {
-                output.textContent += '❌ Failed to reconnect. Please try the Reconnect button or refresh the page.\n';
+                output.textContent += 'Failed to reconnect. Please try the Reconnect button or refresh the page.\n';
             }
         }, 3000);
         return;
     }
     
-    // Clear previous output and set up for new execution
+    // Prepare UI for program execution
     if (output) {
-        output.textContent = '🚀 Compiling and running your code...\n';
+        output.textContent = 'Compiling and running your code...\n';
         output.textContent += '─'.repeat(50) + '\n';
     }
     
-    // Update UI state to "Stop" mode
+    // Update UI to stop mode - allows user to terminate hung programs
     programRunning = true;
     if (runButton) {
-        runButton.disabled = false; // Keep enabled so user can stop
-        runButton.textContent = '🛑 Stop Program';
-        runButton.className = 'run-button stop-button'; // Add stop styling
-        runButton.style.background = '#ff6b6b'; // Red stop button
-        console.log('🔴 Button changed to Stop Program state');
+        runButton.disabled = false;
+        runButton.textContent = 'Stop Program';
+        runButton.className = 'run-button stop-button';
+        runButton.style.background = '#ff6b6b';
+        console.log('Button changed to Stop Program state');
     }
     
-    // Reset input field
     if (inputField) {
         inputField.style.borderColor = '#4CAF50';
         inputField.placeholder = "Program will prompt if input needed...";
     }
     
-    console.log('📤 Emitting run event with code length:', code.length);
+    console.log('Emitting run event with code length:', code.length);
     socket.emit('run', { code: code });
     
-    // Enhanced failsafe timeout
+    // Failsafe timeout for programs that may hang without proper termination signals
     setTimeout(() => {
         if (programRunning && output) {
-            console.log('⏰ Failsafe timeout triggered - program may have hung');
-            output.textContent += '\n⚠️ Program execution seems to be taking too long.\n';
-            output.textContent += '💡 Click "Stop Program" to terminate it.\n';
+            console.log('Failsafe timeout triggered - program may have hung');
+            output.textContent += '\nProgram execution seems to be taking too long.\n';
+            output.textContent += 'Click "Stop Program" to terminate it.\n';
         }
     }, 35000);
 }
 
 function stopProgram() {
     if (!socket || !socket.connected) {
-        if (output) output.textContent += '❌ Not connected to server\n';
+        if (output) output.textContent += 'Not connected to server\n';
         reconnectSocket();
         return;
     }
     
-    console.log('🛑 Stopping program');
+    console.log('Stopping program');
     
-    // Update button to show stopping state
+    // Show stopping state to prevent multiple stop requests
     if (runButton) {
         runButton.disabled = true;
-        runButton.textContent = '⏳ Stopping...';
+        runButton.textContent = 'Stopping...';
         runButton.className = 'run-button stopping';
         runButton.style.background = '#666';
     }
     
     socket.emit('kill');
-    if (output) output.textContent += '\n🛑 Stopping program...\n';
+    if (output) output.textContent += '\nStopping program...\n';
     
-    // Reset UI state after a brief delay
+    // Reset UI after brief delay to allow server cleanup
     setTimeout(resetUIState, 1000);
 }
 
@@ -326,33 +317,33 @@ function killProgram() {
     stopProgram();
 }
 
-// Enhanced sendInput function with better state management
+// Input handling with enhanced state management
 function sendInput(event) {
     if (event.key === 'Enter') {
         const input = inputField.value;
         
-        console.log('📝 Sending input:', input);
+        console.log('Sending input:', input);
         
         if (!socket || !socket.connected) {
-            if (output) output.textContent += '❌ Not connected to server\n';
+            if (output) output.textContent += 'Not connected to server\n';
             return;
         }
         
         if (!programRunning) {
-            console.log('⚠️ No program running to send input to');
+            console.log('No program running to send input to');
             return;
         }
         
-        // Always send the input, even if empty (some programs expect just Enter)
+        // Send input with newline (required for most C programs)
         const inputData = input + '\n';
         socket.emit('input', { data: inputData });
         
-        // Show what user typed in the output for clarity
+        // Echo input to output for user feedback
         if (output) {
             if (input.trim() !== '') {
-                output.textContent += `📝 Input: ${input}\n`;
+                output.textContent += `Input: ${input}\n`;
             } else {
-                output.textContent += `📝 Input: [Enter]\n`;
+                output.textContent += `Input: [Enter]\n`;
             }
             output.scrollTop = output.scrollHeight;
         }
@@ -360,17 +351,17 @@ function sendInput(event) {
         inputField.value = '';
         inputField.focus();
         
-        // Reset input field styling but KEEP the stop button active
+        // Reset styling but preserve stop button functionality
         inputField.style.borderColor = '#4CAF50';
         inputField.placeholder = "Program may ask for more input...";
         
-        // Ensure the stop button stays active since program is still running
+        // Ensure stop button remains active since program continues running
         if (runButton && programRunning) {
             runButton.disabled = false;
-            runButton.textContent = '🛑 Stop Program';
+            runButton.textContent = 'Stop Program';
             runButton.className = 'run-button stop-button';
             runButton.style.background = '#ff6b6b';
-            console.log('🔍 Input sent, keeping stop button active');
+            console.log('Input sent, keeping stop button active');
         }
     }
 }
@@ -395,13 +386,13 @@ function setNickname() {
         if (nicknameDisplay) nicknameDisplay.textContent = currentNickname;
         
         checkGameStatus();
-        console.log('✅ Nickname set:', currentNickname);
+        console.log('Nickname set:', currentNickname);
     } else {
         alert('Please enter a valid nickname');
     }
 }
 
-// Game Functions
+// Game status polling with change detection to minimize DOM updates
 async function checkGameStatus() {
     try {
         const response = await fetch('/api/game/status');
@@ -409,7 +400,7 @@ async function checkGameStatus() {
         if (response.ok) {
             const status = await response.json();
             
-            // Only update DOM if status actually changed
+            // Only update DOM if status actually changed to prevent unnecessary reflows
             if (!lastGameStatus || 
                 lastGameStatus.active !== status.active || 
                 lastGameStatus.current_question !== status.current_question) {
@@ -489,7 +480,7 @@ function displayQuestion(question) {
     if (questionCard) questionCard.classList.add('active');
 }
 
-// Simple mobile keyboard helper functions
+// Mobile keyboard helper functions for touch devices
 function insertText(text) {
     // Try Monaco editor first
     if (window.monacoEditor && window.monacoEditor.getSelection) {
@@ -544,11 +535,11 @@ function clearCode() {
     }
 }
 
-// Initialize Application
+// Application initialization with proper sequencing for production reliability
 window.addEventListener('load', function() {
-    console.log('🚀 App loading...');
+    console.log('App loading...');
     
-    // Check if user has nickname
+    // Restore user session
     const savedNickname = sessionStorage.getItem('nickname');
     const nicknameModal = document.getElementById('nicknameModal');
     const nicknameDisplay = document.getElementById('nicknameDisplay');
@@ -558,37 +549,37 @@ window.addEventListener('load', function() {
         currentNickname = savedNickname;
         if (nicknameModal) nicknameModal.style.display = 'none';
         if (nicknameDisplay) nicknameDisplay.textContent = currentNickname;
-        console.log('📝 Loaded saved nickname:', currentNickname);
+        console.log('Loaded saved nickname:', currentNickname);
     } else {
-        console.log('📝 No saved nickname, showing modal');
+        console.log('No saved nickname, showing modal');
         if (nicknameInput) nicknameInput.focus();
     }
     
     // Initialize Monaco Editor
-    console.log('🎨 Initializing Monaco Editor...');
+    console.log('Initializing Monaco Editor...');
     if (typeof initMonacoEditor === 'function') {
         initMonacoEditor();
     }
     
-    // Initialize Socket connection with delay to ensure DOM is ready
+    // Initialize Socket connection with delay to ensure DOM readiness
     setTimeout(() => {
-        console.log('🔌 Initializing socket connection...');
-        if (output) output.textContent = '🔌 Connecting to server...\n';
+        console.log('Initializing socket connection...');
+        if (output) output.textContent = 'Connecting to server...\n';
         initializeSocket();
     }, 1000);
     
-    // Hide game alert on initial load
+    // Initialize game features
     const gameAlert = document.getElementById('gameAlert');
     if (gameAlert) gameAlert.style.display = 'none';
     
-    // Start checking game status
+    // Start game status polling with staggered timing to reduce server load
     setTimeout(() => {
         checkGameStatus();
         setInterval(checkGameStatus, 10000);
     }, 2000);
 });
 
-// Enable Enter key in nickname input
+// Enable Enter key in nickname input for better UX
 document.addEventListener('DOMContentLoaded', function() {
     const nicknameInput = document.getElementById('nicknameInput');
     if (nicknameInput) {
@@ -600,7 +591,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Make functions globally available for onclick handlers
+// Global function exports for onclick handlers
 window.setNickname = setNickname;
 window.joinGame = joinGame;
 window.runCode = runCode;

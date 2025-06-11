@@ -15,11 +15,11 @@ import termios
 import struct
 import logging
 import sys
-# --- SocketIO and PTY imports ---
+# SocketIO and PTY imports for real-time terminal functionality
 from flask_socketio import SocketIO, emit, disconnect, join_room, leave_room
 import threading, pty, select
 
-# Configure logging for Docker
+# Configure logging for Docker deployment
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -33,25 +33,25 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
 
-# --- Fixed SocketIO configuration for Docker compatibility ---
+# SocketIO configuration optimized for Docker environments
 socketio = SocketIO(
     app, 
     cors_allowed_origins="*", 
-    # Remove async_mode to let Flask-SocketIO choose the best available mode
+    # Disable debug logging to reduce noise
     logger=False,
     engineio_logger=False,
     ping_timeout=60,
     ping_interval=30,
-    # Use threading mode which is more compatible across environments
+    # Threading mode for better Docker compatibility
     transports=['polling', 'websocket'],
     allow_upgrades=True
 )
 
-# --- Enhanced PTY globals for Docker environment ---
+# Global session management
 active_sessions = {}
 session_lock = threading.Lock()
 
-# Docker-specific configurations with fallbacks for local development
+# Directory paths with Docker/local fallbacks
 TEMP_DIR = '/app/temp' if os.path.exists('/app/temp') else './temp'
 LOGS_DIR = '/app/logs' if os.path.exists('/app/logs') else './logs'
 DATA_DIR = '/app/data' if os.path.exists('/app/data') else './data'
@@ -59,7 +59,6 @@ MAX_SESSIONS = int(os.environ.get('MAX_SESSIONS', '30'))
 COMPILE_TIMEOUT = int(os.environ.get('COMPILE_TIMEOUT', '15'))
 EXECUTION_TIMEOUT = int(os.environ.get('EXECUTION_TIMEOUT', '30'))
 
-# Ensure directories exist
 os.makedirs(TEMP_DIR, exist_ok=True)
 os.makedirs(LOGS_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -76,15 +75,15 @@ class PTYSession:
         self.temp_dir = None
         
     def cleanup(self):
-        """Enhanced cleanup for Docker environment"""
+        """Clean up all session resources including processes and temp files"""
         with self.lock:
             if not self.active:
                 return
                 
-            logger.info(f"🧹 Cleaning up PTY session {self.session_id}")
+            logger.info(f"Cleaning up PTY session {self.session_id}")
             self.active = False
             
-            # Kill process group
+            # Kill process group to ensure all child processes are terminated
             if self.process:
                 try:
                     if self.process.poll() is None:
@@ -101,7 +100,7 @@ class PTYSession:
                 finally:
                     self.process = None
                     
-            # Close PTY
+            # Close PTY file descriptor
             if self.master_fd:
                 try:
                     os.close(self.master_fd)
@@ -110,7 +109,7 @@ class PTYSession:
                 finally:
                     self.master_fd = None
                     
-            # Clean up temp directory
+            # Remove session-specific temporary directory
             if self.temp_dir and os.path.exists(self.temp_dir):
                 try:
                     shutil.rmtree(self.temp_dir)
@@ -119,15 +118,15 @@ class PTYSession:
                     
             self.reader_thread = None
             self.monitor_thread = None
-            logger.info(f"✅ Session {self.session_id} cleaned up")
+            logger.info(f"Session {self.session_id} cleaned up")
 
-# Configuration
+# Teacher authentication credentials
 TEACHER_USERNAME = 'tuklu15'
 TEACHER_PASSWORD = 'AdJk@1526'
 PROGRESS_FILE = os.path.join(DATA_DIR, 'progress.json')
 GAME_STATE_FILE = os.path.join(DATA_DIR, 'game_state.json')
 
-# In-memory game state
+# In-memory game state structure
 current_game = {
     'active': False,
     'current_question': None,
@@ -166,7 +165,6 @@ def validate_output(expected, actual):
         return len(actual.strip()) > 0
     return expected.strip() == actual.strip()
 
-# Routes
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -311,10 +309,9 @@ def get_leaderboard():
 def leaderboard_page():
     return render_template('leaderboard.html')
 
-# PTY functions
 def pty_reader(session_id, master_fd):
-    """PTY reader with enhanced error handling"""
-    logger.info(f"🔍 PTY reader started for session {session_id}")
+    """Read PTY output and emit to client via SocketIO"""
+    logger.info(f"PTY reader started for session {session_id}")
     
     with session_lock:
         session = active_sessions.get(session_id)
@@ -326,6 +323,7 @@ def pty_reader(session_id, master_fd):
     try:
         while session.active:
             try:
+                # Non-blocking read with select
                 r, _, _ = select.select([master_fd], [], [], 0.1)
                 
                 if master_fd in r:
@@ -341,7 +339,7 @@ def pty_reader(session_id, master_fd):
                         break
                         
             except OSError as e:
-                if e.errno == 5:  # Input/output error
+                if e.errno == 5:  # Input/output error indicates PTY closed
                     logger.info(f"PTY closed for session {session_id}")
                     break
                 else:
@@ -354,11 +352,11 @@ def pty_reader(session_id, master_fd):
     except Exception as e:
         logger.error(f"PTY reader exception for session {session_id}: {e}")
     finally:
-        logger.info(f"🏁 PTY reader ended for session {session_id}")
+        logger.info(f"PTY reader ended for session {session_id}")
 
 def process_monitor(session_id):
-    """Process monitor with enhanced error handling"""
-    logger.info(f"👀 Process monitor started for session {session_id}")
+    """Monitor process execution and handle timeouts"""
+    logger.info(f"Process monitor started for session {session_id}")
     
     with session_lock:
         session = active_sessions.get(session_id)
@@ -369,20 +367,21 @@ def process_monitor(session_id):
     
     try:
         return_code = session.process.wait(timeout=EXECUTION_TIMEOUT)
-        time.sleep(0.5)
+        time.sleep(0.5)  # Brief delay to ensure all output is captured
         
         if return_code == 0:
-            socketio.emit('pty-output', f'\n✅ Program completed successfully (exit code: {return_code})\n',
+            socketio.emit('pty-output', f'\nProgram completed successfully (exit code: {return_code})\n',
                         namespace='/pty', room=session_id)
         else:
-            socketio.emit('pty-output', f'\n❌ Program exited with code: {return_code}\n',
+            socketio.emit('pty-output', f'\nProgram exited with code: {return_code}\n',
                         namespace='/pty', room=session_id)
                         
     except subprocess.TimeoutExpired:
         logger.warning(f"Process timeout for session {session_id}")
-        socketio.emit('pty-output', f'\n⏰ Program execution timed out ({EXECUTION_TIMEOUT}s limit)\n',
+        socketio.emit('pty-output', f'\nProgram execution timed out ({EXECUTION_TIMEOUT}s limit)\n',
                     namespace='/pty', room=session_id)
         
+        # Force kill the process group
         try:
             if session.process and session.process.poll() is None:
                 pgid = os.getpgid(session.process.pid)
@@ -392,31 +391,32 @@ def process_monitor(session_id):
             
     except Exception as e:
         logger.error(f"Process monitor error for session {session_id}: {e}")
-        socketio.emit('pty-output', f'\n❌ Monitor error: {str(e)}\n',
+        socketio.emit('pty-output', f'\nMonitor error: {str(e)}\n',
                     namespace='/pty', room=session_id)
     finally:
-        socketio.emit('pty-output', '─' * 50 + '\n', namespace='/pty', room=session_id)
+        socketio.emit('pty-output', '-' * 50 + '\n', namespace='/pty', room=session_id)
         time.sleep(0.1)
         
+        # Clean up session when process ends
         with session_lock:
             if session_id in active_sessions:
                 active_sessions[session_id].cleanup()
         
-        logger.info(f"🏁 Process monitor ended for session {session_id}")
+        logger.info(f"Process monitor ended for session {session_id}")
 
-# SocketIO handlers
 @socketio.on('connect', namespace='/pty')
 def handle_pty_connect():
     session_id = request.sid
-    logger.info(f"🔌 PTY client connected: {session_id}")
+    logger.info(f"PTY client connected: {session_id}")
     
-    # Check session limit
+    # Enforce session limit to prevent resource exhaustion
     if len(active_sessions) >= MAX_SESSIONS:
-        emit('pty-output', f'❌ Server at capacity ({MAX_SESSIONS} sessions). Try again later.\n')
+        emit('pty-output', f'Server at capacity ({MAX_SESSIONS} sessions). Try again later.\n')
         disconnect()
         return
     
     with session_lock:
+        # Clean up any existing session with same ID
         if session_id in active_sessions:
             active_sessions[session_id].cleanup()
             del active_sessions[session_id]
@@ -425,15 +425,15 @@ def handle_pty_connect():
     
     join_room(session_id)
     
-    emit('pty-output', '🔗 Connected to C Programming Environment!\n')
-    emit('pty-output', '📝 Write your C code and click "Run Code" to execute it!\n')
-    emit('pty-output', '💡 Interactive input (scanf) is fully supported.\n')
-    emit('pty-output', '─' * 50 + '\n')
+    emit('pty-output', 'Connected to C Programming Environment!\n')
+    emit('pty-output', 'Write your C code and click "Run Code" to execute it!\n')
+    emit('pty-output', 'Interactive input (scanf) is fully supported.\n')
+    emit('pty-output', '-' * 50 + '\n')
 
 @socketio.on('disconnect', namespace='/pty')
 def handle_pty_disconnect():
     session_id = request.sid
-    logger.info(f"🔌 PTY client disconnected: {session_id}")
+    logger.info(f"PTY client disconnected: {session_id}")
     
     leave_room(session_id)
     
@@ -444,26 +444,27 @@ def handle_pty_disconnect():
 
 @socketio.on('run', namespace='/pty')
 def handle_run(message):
-    """Enhanced code execution handler"""
+    """Compile and execute C code in isolated environment"""
     session_id = request.sid
     
     with session_lock:
         session = active_sessions.get(session_id)
     
     if not session:
-        emit('pty-output', '❌ Session not found. Please refresh the page.\n')
+        emit('pty-output', 'Session not found. Please refresh the page.\n')
         return
     
     code = message.get('code', '').strip()
     
     if not code:
-        emit('pty-output', '❌ No code provided\n')
+        emit('pty-output', 'No code provided\n')
         return
     
+    # Clean up any previous execution
     session.cleanup()
     
     try:
-        # Create session-specific temp directory
+        # Create isolated temporary directory for this execution
         session.temp_dir = tempfile.mkdtemp(dir=TEMP_DIR, prefix=f'session_{session_id}_')
         c_file = os.path.join(session.temp_dir, 'program.c')
         exe_file = os.path.join(session.temp_dir, 'program')
@@ -471,9 +472,9 @@ def handle_run(message):
         with open(c_file, 'w', encoding='utf-8') as f:
             f.write(code)
         
-        emit('pty-output', '🔨 Compiling your code...\n')
+        emit('pty-output', 'Compiling your code...\n')
         
-        # Enhanced compilation
+        # Compile with warnings enabled for better learning
         compile_result = subprocess.run(
             ['gcc', '-Wall', '-Wextra', '-std=c99', '-g', '-O1', '-o', exe_file, c_file],
             capture_output=True,
@@ -483,44 +484,46 @@ def handle_run(message):
         )
         
         if compile_result.returncode != 0:
-            emit('pty-output', '❌ Compilation failed:\n')
+            emit('pty-output', 'Compilation failed:\n')
             emit('pty-output', compile_result.stderr)
-            emit('pty-output', '\n💡 Check your syntax and try again.\n')
-            emit('pty-output', '─' * 50 + '\n')
+            emit('pty-output', '\nCheck your syntax and try again.\n')
+            emit('pty-output', '-' * 50 + '\n')
             return
         
+        # Show warnings if any (non-blocking)
         if compile_result.stderr.strip():
-            emit('pty-output', '⚠️ Compilation warnings:\n')
+            emit('pty-output', 'Compilation warnings:\n')
             emit('pty-output', compile_result.stderr)
             emit('pty-output', '\n')
         
-        emit('pty-output', '✅ Compilation successful!\n')
-        emit('pty-output', '🚀 Running your program...\n')
+        emit('pty-output', 'Compilation successful!\n')
+        emit('pty-output', 'Running your program...\n')
         
+        # Detect interactive input requirements
         if 'scanf' in code or 'gets' in code or 'getchar' in code:
-            emit('pty-output', '💡 Input handling ready - type in the input field when prompted.\n')
+            emit('pty-output', 'Input handling ready - type in the input field when prompted.\n')
         
-        emit('pty-output', '─' * 50 + '\n')
+        emit('pty-output', '-' * 50 + '\n')
         
-        # Create PTY
+        # Create PTY for interactive I/O
         master, slave = pty.openpty()
         
         session.master_fd = master
         session.active = True
         
-        # Start process
+        # Start process in new process group for clean termination
         session.process = subprocess.Popen(
             [exe_file],
             stdin=slave,
             stdout=slave,
             stderr=slave,
-            preexec_fn=os.setsid,
+            preexec_fn=os.setsid,  # Create new process group
             cwd=session.temp_dir
         )
         
-        os.close(slave)
+        os.close(slave)  # Close slave end in parent process
         
-        # Start threads
+        # Start background threads for I/O handling
         session.reader_thread = threading.Thread(
             target=pty_reader,
             args=(session_id, master),
@@ -536,42 +539,42 @@ def handle_run(message):
         session.monitor_thread.start()
         
     except subprocess.TimeoutExpired:
-        emit('pty-output', f'❌ Compilation timed out ({COMPILE_TIMEOUT}s limit)\n')
-        emit('pty-output', '─' * 50 + '\n')
+        emit('pty-output', f'Compilation timed out ({COMPILE_TIMEOUT}s limit)\n')
+        emit('pty-output', '-' * 50 + '\n')
     except Exception as e:
-        emit('pty-output', f'❌ Execution error: {str(e)}\n')
-        emit('pty-output', '─' * 50 + '\n')
+        emit('pty-output', f'Execution error: {str(e)}\n')
+        emit('pty-output', '-' * 50 + '\n')
         logger.error(f"Run handler error for session {session_id}: {e}")
 
 @socketio.on('input', namespace='/pty')
 def handle_input(message):
-    """Enhanced input handling"""
+    """Send user input to running C program via PTY"""
     session_id = request.sid
     
     with session_lock:
         session = active_sessions.get(session_id)
     
     if not session or not session.master_fd or not session.active:
-        emit('pty-output', '❌ No active program to send input to\n')
+        emit('pty-output', 'No active program to send input to\n')
         return
     
     data = message.get('data', '')
-    logger.info(f"📝 Session {session_id} sending input: {repr(data)}")
+    logger.info(f"Session {session_id} sending input: {repr(data)}")
     
     try:
         bytes_written = os.write(session.master_fd, data.encode('utf-8'))
-        logger.info(f"✅ Successfully sent {bytes_written} bytes to session {session_id}")
+        logger.info(f"Successfully sent {bytes_written} bytes to session {session_id}")
     except OSError as e:
         logger.error(f"OSError sending input to session {session_id}: {e}")
-        emit('pty-output', '❌ Failed to send input - program may have terminated\n')
+        emit('pty-output', 'Failed to send input - program may have terminated\n')
         session.cleanup()
     except Exception as e:
         logger.error(f"Input error for session {session_id}: {e}")
-        emit('pty-output', f'❌ Input error: {str(e)}\n')
+        emit('pty-output', f'Input error: {str(e)}\n')
 
 @socketio.on('kill', namespace='/pty')
 def handle_kill():
-    """Enhanced kill handler"""
+    """Forcefully terminate running program"""
     session_id = request.sid
     
     with session_lock:
@@ -579,23 +582,25 @@ def handle_kill():
     
     if session and session.process:
         try:
-            emit('pty-output', '\n🛑 Terminating program...\n')
+            emit('pty-output', '\nTerminating program...\n')
+            # Kill entire process group to handle child processes
             pgid = os.getpgid(session.process.pid)
             os.killpg(pgid, signal.SIGTERM)
             time.sleep(0.5)
             
+            # Force kill if still running
             if session.process.poll() is None:
                 os.killpg(pgid, signal.SIGKILL)
                 
-            emit('pty-output', '✅ Program terminated\n')
-            emit('pty-output', '─' * 50 + '\n')
+            emit('pty-output', 'Program terminated\n')
+            emit('pty-output', '-' * 50 + '\n')
         except Exception as e:
-            emit('pty-output', f'\n❌ Failed to terminate: {str(e)}\n')
-            emit('pty-output', '─' * 50 + '\n')
+            emit('pty-output', f'\nFailed to terminate: {str(e)}\n')
+            emit('pty-output', '-' * 50 + '\n')
         finally:
             session.cleanup()
     else:
-        emit('pty-output', '❌ No running program to terminate\n')
+        emit('pty-output', 'No running program to terminate\n')
 
 @app.errorhandler(404)
 def not_found_error(error):
@@ -608,14 +613,14 @@ def internal_error(error):
 import atexit
 
 def cleanup_all_sessions():
-    """Enhanced cleanup"""
-    logger.info("🧹 Cleaning up all sessions...")
+    """Emergency cleanup for all active sessions"""
+    logger.info("Cleaning up all sessions...")
     with session_lock:
         for session in active_sessions.values():
             session.cleanup()
         active_sessions.clear()
     
-    # Clean up temp directories
+    # Clean up orphaned temp directories
     try:
         for item in os.listdir(TEMP_DIR):
             item_path = os.path.join(TEMP_DIR, item)
@@ -624,29 +629,32 @@ def cleanup_all_sessions():
     except Exception as e:
         logger.warning(f"Error cleaning temp directories: {e}")
     
-    logger.info("✅ All sessions cleaned up")
+    logger.info("All sessions cleaned up")
 
+# Register cleanup to run on process exit
 atexit.register(cleanup_all_sessions)
 
 if __name__ == '__main__':
+    # Load persistent game state on startup
     load_game_state()
-    logger.info("🚀 Starting Enhanced C Programming Practice Server...")
-    logger.info("📡 Threading-mode SocketIO enabled for Docker compatibility")
-    logger.info("🎮 Game functionality enabled")
-    logger.info("🔧 Enhanced resource management")
-    logger.info("─" * 50)
+    logger.info("Starting Enhanced C Programming Practice Server...")
+    logger.info("Threading-mode SocketIO enabled for Docker compatibility")
+    logger.info("Game functionality enabled")
+    logger.info("Enhanced resource management")
+    logger.info("-" * 50)
     
     try:
+        # Run server with production settings
         socketio.run(
             app, 
-            host='0.0.0.0', 
+            host='0.0.0.0',  # Accept connections from any IP
             port=5000,
-            debug=False,
-            use_reloader=False
+            debug=False,     # Disable debug mode for production
+            use_reloader=False  # Prevent duplicate processes
         )
     except KeyboardInterrupt:
-        logger.info("\n🛑 Server shutting down...")
+        logger.info("\nServer shutting down...")
         cleanup_all_sessions()
     except Exception as e:
-        logger.error(f"❌ Server error: {e}")
+        logger.error(f"Server error: {e}")
         cleanup_all_sessions()
