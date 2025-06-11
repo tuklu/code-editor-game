@@ -8,7 +8,7 @@ from datetime import datetime
 import uuid
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-change-in-production'
+app.secret_key = ''
 
 # Configuration
 TEACHER_USERNAME = 'tuklu15'
@@ -179,14 +179,15 @@ def run_code():
             with open(c_file, 'w') as f:
                 f.write(code)
             
-            # Compile the code
+            # Compile the code with warnings enabled
             compile_result = subprocess.run(
-                ['gcc', '-o', exe_file, c_file],
+                ['gcc', '-Wall', '-Wextra', '-o', exe_file, c_file],
                 capture_output=True,
                 text=True,
                 timeout=10
             )
             
+            # Check for compilation errors (non-zero return code)
             if compile_result.returncode != 0:
                 return jsonify({
                     'error': compile_result.stderr,
@@ -219,11 +220,17 @@ def run_code():
                     })
                     save_game_state()
             
-            return jsonify({
+            response = {
                 'output': output,
                 'stderr': run_result.stderr,
                 'challenge_cleared': challenge_cleared
-            })
+            }
+            
+            # Include compilation warnings if any
+            if compile_result.stderr.strip():
+                response['warnings'] = compile_result.stderr
+            
+            return jsonify(response)
             
         except subprocess.TimeoutExpired:
             return jsonify({
