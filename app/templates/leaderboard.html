@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Leaderboard - C Programming Challenge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 20px;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.2); }
+            to { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3), 0 0 30px rgba(255, 255, 255, 0.4); }
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .game-info {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .game-status {
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .question-info {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .container {
+            flex: 1;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            width: 100%;
+        }
+
+        .leaderboard-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .leaderboard-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .leaderboard-header h2 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 1.1rem;
+        }
+
+        .leaderboard-table th {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 1.2rem;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .leaderboard-table td {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: background-color 0.3s ease;
+        }
+
+        .leaderboard-table tr:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .rank {
+            font-weight: bold;
+            font-size: 1.5rem;
+            text-align: center;
+            width: 80px;
+        }
+
+        .rank.first {
+            color: #FFD700;
+            text-shadow: 0 0 10px #FFD700;
+        }
+
+        .rank.second {
+            color: #C0C0C0;
+            text-shadow: 0 0 10px #C0C0C0;
+        }
+
+        .rank.third {
+            color: #CD7F32;
+            text-shadow: 0 0 10px #CD7F32;
+        }
+
+        .student-name {
+            font-weight: bold;
+            font-size: 1.3rem;
+        }
+
+        .score {
+            font-weight: bold;
+            font-size: 1.4rem;
+            text-align: center;
+            color: #4CAF50;
+            text-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            opacity: 0.8;
+        }
+
+        .empty-state h3 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+
+        .empty-state p {
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+
+        .refresh-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 15px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .pulse {
+            animation: pulse 1s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .trophy {
+            font-size: 2rem;
+            margin-right: 10px;
+        }
+
+        .podium {
+            display: flex;
+            justify-content: center;
+            align-items: end;
+            margin: 30px 0;
+            gap: 20px;
+        }
+
+        .podium-place {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            min-width: 120px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .podium-place.first {
+            height: 180px;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #333;
+            order: 2;
+        }
+
+        .podium-place.second {
+            height: 140px;
+            background: linear-gradient(135deg, #C0C0C0, #A8A8A8);
+            color: #333;
+            order: 1;
+        }
+
+        .podium-place.third {
+            height: 100px;
+            background: linear-gradient(135deg, #CD7F32, #B8860B);
+            color: #333;
+            order: 3;
+        }
+
+        .podium-rank {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .podium-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+
+        .podium-score {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+
+            .leaderboard-header h2 {
+                font-size: 2rem;
+            }
+
+            .leaderboard-table th,
+            .leaderboard-table td {
+                padding: 15px 10px;
+            }
+
+            .student-name {
+                font-size: 1.1rem;
+            }
+
+            .score {
+                font-size: 1.2rem;
+            }
+
+            .podium {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .podium-place {
+                order: initial !important;
+                width: 200px;
+                height: auto !important;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏆 Live Leaderboard</h1>
+        <p>C Programming Challenge</p>
+    </div>
+
+    <div class="game-info" id="gameInfo">
+        <div class="game-status" id="gameStatus">Checking game status...</div>
+        <div class="question-info" id="questionInfo"></div>
+    </div>
+
+    <div class="container">
+        <div class="leaderboard-card">
+            <div class="leaderboard-header">
+                <h2><span class="trophy">🏆</span>Rankings</h2>
+            </div>
+
+            <!-- Podium for top 3 -->
+            <div id="podium" class="podium" style="display: none;">
+                <!-- Podium will be populated by JavaScript -->
+            </div>
+
+            <!-- Full leaderboard table -->
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th style="text-align: center;">Rank</th>
+                        <th>Student</th>
+                        <th style="text-align: center;">Score</th>
+                        <th style="text-align: center;">Progress</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                    <tr>
+                        <td colspan="4" class="empty-state">
+                            <h3>🎯 Waiting for Challenge</h3>
+                            <p>The leaderboard will appear when students start participating in the coding challenge.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="refresh-indicator" id="refreshIndicator">
+        🔄 Auto-updating...
+    </div>
+
+    <script>
+        let gameData = null;
+        let lastUpdateTime = null;
+
+        // Initialize
+        window.addEventListener('load', function() {
+            updateLeaderboard();
+            setInterval(updateLeaderboard, 3000); // Update every 3 seconds
+            setInterval(updateGameStatus, 5000); // Check game status every 5 seconds
+        });
+
+        async function updateGameStatus() {
+            try {
+                const response = await fetch('/api/game/status');
+                if (response.ok) {
+                    gameData = await response.json();
+                    displayGameInfo();
+                }
+            } catch (error) {
+                console.error('Failed to get game status:', error);
+                displayNoGame();
+            }
+        }
+
+        function displayGameInfo() {
+            const statusElement = document.getElementById('gameStatus');
+            const questionElement = document.getElementById('questionInfo');
+
+            if (gameData && gameData.active) {
+                statusElement.textContent = `🎮 Challenge Active - Question ${gameData.question_index + 1} of ${gameData.total_questions}`;
+                statusElement.style.color = '#4CAF50';
+                
+                if (gameData.current_question) {
+                    questionElement.innerHTML = `
+                        <strong>Current Challenge:</strong> ${gameData.current_question.title}<br>
+                        <em>${gameData.current_question.description}</em>
+                    `;
+                }
+            } else {
+                displayNoGame();
+            }
+        }
+
+        function displayNoGame() {
+            const statusElement = document.getElementById('gameStatus');
+            const questionElement = document.getElementById('questionInfo');
+            
+            statusElement.textContent = '⏸️ No Active Challenge';
+            statusElement.style.color = '#ff9800';
+            questionElement.textContent = 'Waiting for teacher to start a coding challenge...';
+        }
+
+        async function updateLeaderboard() {
+            try {
+                const response = await fetch('/api/leaderboard');
+                const leaderboard = await response.json();
+                
+                // Add animation
+                const indicator = document.getElementById('refreshIndicator');
+                indicator.classList.add('pulse');
+                setTimeout(() => indicator.classList.remove('pulse'), 1000);
+                
+                displayLeaderboard(leaderboard);
+                lastUpdateTime = new Date();
+                
+            } catch (error) {
+                console.error('Failed to update leaderboard:', error);
+                displayEmptyLeaderboard();
+            }
+        }
+
+        function displayLeaderboard(leaderboard) {
+            const tbody = document.getElementById('leaderboardBody');
+            const podium = document.getElementById('podium');
+            
+            if (!leaderboard || leaderboard.length === 0) {
+                displayEmptyLeaderboard();
+                return;
+            }
+
+            // Show podium for top 3
+            if (leaderboard.length >= 3) {
+                displayPodium(leaderboard.slice(0, 3));
+                podium.style.display = 'flex';
+            } else {
+                podium.style.display = 'none';
+            }
+
+            // Display full leaderboard
+            tbody.innerHTML = '';
+            leaderboard.forEach((student, index) => {
+                const row = document.createElement('tr');
+                
+                let rankClass = '';
+                let rankText = `#${index + 1}`;
+                
+                if (index === 0) {
+                    rankClass = 'first';
+                    rankText = '🥇';
+                } else if (index === 1) {
+                    rankClass = 'second';
+                    rankText = '🥈';
+                } else if (index === 2) {
+                    rankClass = 'third';
+                    rankText = '🥉';
+                }
+
+                const progressBar = createProgressBar(student.score, gameData ? gameData.total_questions : 10);
+                
+                row.innerHTML = `
+                    <td class="rank ${rankClass}">${rankText}</td>
+                    <td class="student-name">${student.nickname}</td>
+                    <td class="score">${student.score}</td>
+                    <td style="text-align: center;">${progressBar}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function displayPodium(top3) {
+            const podium = document.getElementById('podium');
+            podium.innerHTML = '';
+
+            const positions = ['second', 'first', 'third'];
+            const medals = ['🥈', '🥇', '🥉'];
+            
+            for (let i = 0; i < 3; i++) {
+                const student = top3[i];
+                if (!student) continue;
+
+                const place = document.createElement('div');
+                place.className = `podium-place ${positions[i]}`;
+                place.innerHTML = `
+                    <div class="podium-rank">${medals[i]}</div>
+                    <div class="podium-name">${student.nickname}</div>
+                    <div class="podium-score">${student.score}</div>
+                `;
+                podium.appendChild(place);
+            }
+        }
+
+        function createProgressBar(score, total) {
+            const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+            return `
+                <div style="background: rgba(255,255,255,0.2); border-radius: 10px; width: 80px; height: 8px; margin: 0 auto; overflow: hidden;">
+                    <div style="background: #4CAF50; height: 100%; width: ${percentage}%; border-radius: 10px; transition: width 0.5s ease;"></div>
+                </div>
+                <small>${percentage}%</small>
+            `;
+        }
+
+        function displayEmptyLeaderboard() {
+            const tbody = document.getElementById('leaderboardBody');
+            const podium = document.getElementById('podium');
+            
+            podium.style.display = 'none';
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="empty-state">
+                        <h3>🎯 Waiting for Participants</h3>
+                        <p>The leaderboard will update automatically when students join and start solving challenges!</p>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // Update game status on load
+        updateGameStatus();
+    </script>
+</body>
+</html>

@@ -165,6 +165,51 @@
             grid-column: 1 / -1;
         }
 
+        .import-export-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            border-left: 4px solid #2196F3;
+        }
+
+        .import-export-section h4 {
+            margin-bottom: 15px;
+            color: #1976d2;
+        }
+
+        .import-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .format-guide {
+            margin-top: 10px;
+        }
+
+        .format-guide summary {
+            cursor: pointer;
+            color: #1976d2;
+            font-weight: bold;
+        }
+
+        .format-guide pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        .format-guide p {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
         .questions-list {
             display: grid;
             gap: 15px;
@@ -278,6 +323,20 @@
             color: #667eea;
         }
 
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #ddd;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #999;
+        }
+
         @media (max-width: 768px) {
             .dashboard {
                 grid-template-columns: 1fr;
@@ -293,6 +352,10 @@
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 10px;
+            }
+
+            .import-buttons {
+                flex-direction: column;
             }
         }
     </style>
@@ -356,6 +419,48 @@
             <div class="card questions-section">
                 <h2>📝 Question Bank</h2>
                 
+                <!-- Import/Export Section -->
+                <div class="import-export-section">
+                    <h4>📂 Import/Export Questions</h4>
+                    
+                    <div class="import-buttons">
+                        <input type="file" id="questionFileInput" accept=".json" style="display: none;" onchange="importQuestions(event)">
+                        <button class="button button-secondary" onclick="document.getElementById('questionFileInput').click()" style="padding: 8px 16px; font-size: 14px;">
+                            📥 Import JSON
+                        </button>
+                        <button class="button button-secondary" onclick="exportQuestions()" style="padding: 8px 16px; font-size: 14px;">
+                            📤 Export JSON
+                        </button>
+                        <button class="button button-secondary" onclick="loadSampleQuestions()" style="padding: 8px 16px; font-size: 14px;">
+                            📋 Load Sample Questions
+                        </button>
+                        <button class="button button-danger" onclick="clearAllQuestions()" style="padding: 8px 16px; font-size: 14px;">
+                            🗑️ Clear All
+                        </button>
+                    </div>
+                    
+                    <details class="format-guide">
+                        <summary>📝 JSON Format Guide</summary>
+                        <pre>[
+  {
+    "id": 1,
+    "title": "Hello World",
+    "description": "Write a program that prints 'Hello, World!'",
+    "hint": "Use printf() function",
+    "expected_output": "Hello, World!\\n"
+  },
+  {
+    "id": 2,
+    "title": "Variable Output",
+    "description": "Print any message",
+    "hint": "Use any printf statement", 
+    "expected_output": "variable"
+  }
+]</pre>
+                        <p>💡 Use "variable" as expected_output to accept any output from students</p>
+                    </details>
+                </div>
+
                 <div id="questionsList" class="questions-list">
                     <!-- Questions will be loaded here -->
                 </div>
@@ -397,50 +502,24 @@
         });
 
         function loadQuestions() {
-            // Load default questions
-            questions = [
-                {
-                    id: 1,
-                    title: "Hello World",
-                    description: "Write a program that prints 'Hello, World!' to the screen.",
-                    hint: "Use printf() to print text",
-                    expected_output: "Hello, World!\n"
-                },
-                {
-                    id: 2,
-                    title: "Simple Addition",
-                    description: "Write a program that prints the result of 5 + 3.",
-                    hint: "Calculate 5 + 3 and print the result",
-                    expected_output: "8\n"
-                },
-                {
-                    id: 3,
-                    title: "Variables Demo",
-                    description: "Create two integer variables (a=10, b=20) and print their sum.",
-                    hint: "Declare int variables and use printf to show their sum",
-                    expected_output: "30\n"
-                },
-                {
-                    id: 4,
-                    title: "Simple Loop",
-                    description: "Print numbers 1 to 5, each on a new line.",
-                    hint: "Use a for loop from 1 to 5",
-                    expected_output: "1\n2\n3\n4\n5\n"
-                },
-                {
-                    id: 5,
-                    title: "Print Your Name",
-                    description: "Write a program that prints your name.",
-                    hint: "Use printf() with any name",
-                    expected_output: "variable"
-                }
-            ];
+            // Start with empty question bank
+            questions = [];
             displayQuestions();
         }
 
         function displayQuestions() {
             const container = document.getElementById('questionsList');
             container.innerHTML = '';
+
+            if (questions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>📝 No Questions Yet</h3>
+                        <p>Start by importing questions from a JSON file, loading sample questions, or adding new questions manually.</p>
+                    </div>
+                `;
+                return;
+            }
 
             questions.forEach((question, index) => {
                 const isCurrent = gameActive && index === currentQuestionIndex;
@@ -470,7 +549,7 @@
             const expectedOutput = document.getElementById('expectedOutput').value;
 
             if (!title || !description || !hint) {
-                alert('Please fill in all fields');
+                alert('Please fill in all required fields (Title, Description, Hint)');
                 return;
             }
 
@@ -490,6 +569,8 @@
             document.getElementById('questionDescription').value = '';
             document.getElementById('questionHint').value = '';
             document.getElementById('expectedOutput').value = '';
+
+            alert('Question added successfully!');
         }
 
         function deleteQuestion(id) {
@@ -497,6 +578,221 @@
                 questions = questions.filter(q => q.id !== id);
                 displayQuestions();
             }
+        }
+
+        function clearAllQuestions() {
+            if (questions.length === 0) {
+                alert('No questions to clear');
+                return;
+            }
+
+            // Prevent clearing questions during an active game
+            if (gameActive) {
+                alert('Cannot clear questions while a game is active. Please stop the game first.');
+                return;
+            }
+
+            if (confirm(`Are you sure you want to delete all ${questions.length} questions? This cannot be undone.`)) {
+                questions = [];
+                displayQuestions();
+                updateGameStatus(); // Update the UI state
+                alert('All questions cleared successfully!');
+            }
+        }
+
+        // Import/Export Functions
+        function importQuestions(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedQuestions = JSON.parse(e.target.result);
+                    
+                    // Validate the format
+                    if (!Array.isArray(importedQuestions)) {
+                        throw new Error('JSON must be an array of questions');
+                    }
+
+                    // Validate each question
+                    const validQuestions = [];
+                    for (let i = 0; i < importedQuestions.length; i++) {
+                        const q = importedQuestions[i];
+                        if (!q.title || !q.description || !q.hint) {
+                            console.warn(`Skipping question ${i + 1}: missing required fields`);
+                            continue;
+                        }
+                        
+                        // Ensure unique ID
+                        const newQuestion = {
+                            id: q.id || Date.now() + Math.random(),
+                            title: q.title,
+                            description: q.description,
+                            hint: q.hint,
+                            expected_output: q.expected_output || 'variable'
+                        };
+                        validQuestions.push(newQuestion);
+                    }
+
+                    if (validQuestions.length === 0) {
+                        alert('No valid questions found in the file');
+                        return;
+                    }
+
+                    // Ask user whether to replace or append
+                    const replace = confirm(
+                        `Found ${validQuestions.length} valid questions.\\n\\n` +
+                        `Click OK to REPLACE all current questions\\n` +
+                        `Click Cancel to ADD to current questions`
+                    );
+
+                    if (replace) {
+                        questions = validQuestions;
+                    } else {
+                        // Append and ensure unique IDs
+                        validQuestions.forEach(newQ => {
+                            while (questions.some(existingQ => existingQ.id === newQ.id)) {
+                                newQ.id = Date.now() + Math.random();
+                            }
+                            questions.push(newQ);
+                        });
+                    }
+
+                    displayQuestions();
+                    alert(`Successfully imported ${validQuestions.length} questions!`);
+                    
+                } catch (error) {
+                    alert('Error importing questions: ' + error.message);
+                }
+            };
+            
+            reader.readAsText(file);
+            // Reset file input
+            event.target.value = '';
+        }
+
+        function exportQuestions() {
+            if (questions.length === 0) {
+                alert('No questions to export');
+                return;
+            }
+
+            const dataStr = JSON.stringify(questions, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `c_programming_questions_${new Date().toISOString().split('T')[0]}.json`;
+            
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            URL.revokeObjectURL(link.href);
+            alert('Questions exported successfully!');
+        }
+
+        function loadSampleQuestions() {
+            const sampleQuestions = [
+                {
+                    id: 1,
+                    title: "Hello World",
+                    description: "Write a program that prints 'Hello, World!' to the screen.",
+                    hint: "Use printf() to print text",
+                    expected_output: "Hello, World!\\n"
+                },
+                {
+                    id: 2,
+                    title: "Simple Addition",
+                    description: "Write a program that prints the result of 5 + 3.",
+                    hint: "Calculate 5 + 3 and print the result",
+                    expected_output: "8\\n"
+                },
+                {
+                    id: 3,
+                    title: "Variables Demo",
+                    description: "Create two integer variables (a=10, b=20) and print their sum.",
+                    hint: "Declare int variables and use printf to show their sum",
+                    expected_output: "30\\n"
+                },
+                {
+                    id: 4,
+                    title: "Simple Loop",
+                    description: "Print numbers 1 to 5, each on a new line.",
+                    hint: "Use a for loop from 1 to 5",
+                    expected_output: "1\\n2\\n3\\n4\\n5\\n"
+                },
+                {
+                    id: 5,
+                    title: "Print Your Name",
+                    description: "Write a program that prints your name.",
+                    hint: "Use printf() with any name",
+                    expected_output: "variable"
+                },
+                {
+                    id: 6,
+                    title: "Even Numbers",
+                    description: "Print all even numbers from 2 to 10.",
+                    hint: "Use a loop and check if number % 2 == 0",
+                    expected_output: "2\\n4\\n6\\n8\\n10\\n"
+                },
+                {
+                    id: 7,
+                    title: "Simple Calculator",
+                    description: "Create variables for two numbers (12 and 8) and print their sum, difference, product, and quotient on separate lines.",
+                    hint: "Use multiple printf statements for each operation",
+                    expected_output: "20\\n4\\n96\\n1\\n"
+                },
+                {
+                    id: 8,
+                    title: "Character Variables",
+                    description: "Declare a character variable with value 'A' and print it.",
+                    hint: "Use char data type and %c format specifier",
+                    expected_output: "A\\n"
+                },
+                {
+                    id: 9,
+                    title: "Float Addition",
+                    description: "Add two floating point numbers (3.5 + 2.7) and print the result with 1 decimal place.",
+                    hint: "Use float variables and %.1f format specifier",
+                    expected_output: "6.2\\n"
+                },
+                {
+                    id: 10,
+                    title: "Simple If Statement",
+                    description: "Create an integer variable with value 15. If it's greater than 10, print 'Big number'.",
+                    hint: "Use if statement to check condition",
+                    expected_output: "Big number\\n"
+                }
+            ];
+
+            if (questions.length > 0) {
+                const replace = confirm(
+                    `This will load ${sampleQuestions.length} sample questions.\\n\\n` +
+                    `Click OK to REPLACE all current questions\\n` +
+                    `Click Cancel to ADD to current questions`
+                );
+
+                if (replace) {
+                    questions = [...sampleQuestions];
+                } else {
+                    // Add sample questions with unique IDs
+                    sampleQuestions.forEach(sampleQ => {
+                        const newQ = { ...sampleQ };
+                        while (questions.some(existingQ => existingQ.id === newQ.id)) {
+                            newQ.id = Date.now() + Math.random();
+                        }
+                        questions.push(newQ);
+                    });
+                }
+            } else {
+                questions = [...sampleQuestions];
+            }
+
+            displayQuestions();
+            alert(`Successfully loaded ${sampleQuestions.length} sample questions!`);
         }
 
         async function startGame() {

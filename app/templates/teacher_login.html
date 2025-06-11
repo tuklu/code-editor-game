@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Login - C Programming Practice</title>
+    <title>Teacher Panel - C Programming Practice</title>
     <style>
         * {
             margin: 0;
@@ -13,180 +13,935 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: #f5f5f5;
             color: #333;
+            line-height: 1.6;
         }
 
-        .login-container {
-            background: white;
-            padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
-        .login-header {
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+        }
+
+        .logout-button {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .logout-button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
             margin-bottom: 30px;
         }
 
-        .login-header h1 {
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
             color: #667eea;
-            font-size: 2rem;
-            margin-bottom: 10px;
-        }
-
-        .login-header p {
-            color: #666;
-            font-size: 1rem;
-        }
-
-        .form-group {
             margin-bottom: 20px;
-            text-align: left;
+            font-size: 1.5rem;
         }
 
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #333;
+        .game-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
-        .form-group input {
-            width: 100%;
-            padding: 15px;
-            font-size: 16px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            transition: border-color 0.3s;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .login-button {
-            width: 100%;
-            background: #667eea;
-            color: white;
+        .button {
+            padding: 12px 20px;
             border: none;
-            padding: 15px;
-            font-size: 16px;
-            font-weight: bold;
             border-radius: 8px;
             cursor: pointer;
-            transition: background 0.3s;
-            margin-bottom: 20px;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
         }
 
-        .login-button:hover {
-            background: #5a6fd8;
+        .button-primary {
+            background: #4CAF50;
+            color: white;
         }
 
-        .login-button:disabled {
+        .button-primary:hover {
+            background: #45a049;
+        }
+
+        .button-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .button-danger:hover {
+            background: #da190b;
+        }
+
+        .button-secondary {
+            background: #2196F3;
+            color: white;
+        }
+
+        .button-secondary:hover {
+            background: #0b7dda;
+        }
+
+        .button:disabled {
             background: #ccc;
             cursor: not-allowed;
         }
 
-        .error-message {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 10px;
-            border-radius: 5px;
+        .timer-section {
             margin-bottom: 20px;
-            display: none;
         }
 
-        .back-link {
-            color: #667eea;
-            text-decoration: none;
+        .timer-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        .timer-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .game-status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .questions-section {
+            grid-column: 1 / -1;
+        }
+
+        .import-export-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            border-left: 4px solid #2196F3;
+        }
+
+        .import-export-section h4 {
+            margin-bottom: 15px;
+            color: #1976d2;
+        }
+
+        .import-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .format-guide {
+            margin-top: 10px;
+        }
+
+        .format-guide summary {
+            cursor: pointer;
+            color: #1976d2;
+            font-weight: bold;
+        }
+
+        .format-guide pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        .format-guide p {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .questions-list {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .question-item {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .question-item.current {
+            border-color: #4CAF50;
+            background: #f0fff0;
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .question-title {
+            font-weight: bold;
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        .question-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .question-description {
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .question-hint {
+            color: #888;
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+
+        .expected-output {
+            background: #1e1e1e;
+            color: #4CAF50;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .add-question-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
             font-size: 14px;
         }
 
-        .back-link:hover {
-            text-decoration: underline;
+        .form-group textarea {
+            height: 80px;
+            resize: vertical;
+            font-family: monospace;
         }
 
-        @media (max-width: 480px) {
-            .login-container {
-                margin: 20px;
-                padding: 30px 20px;
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .leaderboard-table th,
+        .leaderboard-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .leaderboard-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+
+        .rank {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #ddd;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #999;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+            
+            .question-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .import-buttons {
+                flex-direction: column;
             }
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-header">
-            <h1>👩‍🏫 Teacher Panel</h1>
-            <p>Access the admin controls</p>
+    <div class="header">
+        <div class="header-content">
+            <h1>👩‍🏫 Teacher Control Panel</h1>
+            <button class="logout-button" onclick="logout()">Logout</button>
         </div>
+    </div>
 
-        <div id="errorMessage" class="error-message"></div>
+    <div class="container">
+        <div class="dashboard">
+            <!-- Game Controls -->
+            <div class="card">
+                <h2>🎮 Game Controls</h2>
+                
+                <div id="gameStatus" class="game-status status-inactive">
+                    No active game
+                </div>
 
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
+                <div class="timer-section">
+                    <label for="timerInput">Question Timer (minutes):</label>
+                    <input type="number" id="timerInput" class="timer-input" min="1" max="60" value="5" placeholder="Enter timer in minutes">
+                </div>
+
+                <div class="game-controls">
+                    <button id="startGameBtn" class="button button-primary" onclick="startGame()">
+                        🚀 Start New Game
+                    </button>
+                    <button id="nextQuestionBtn" class="button button-secondary" onclick="nextQuestion()" disabled>
+                        ➡️ Next Question
+                    </button>
+                    <button id="stopGameBtn" class="button button-danger" onclick="stopGame()" disabled>
+                        ⏹️ Stop Game
+                    </button>
+                    <button class="button button-secondary" onclick="openLeaderboard()" style="background: #9C27B0;">
+                        📺 Open Leaderboard View
+                    </button>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
+            <!-- Live Leaderboard -->
+            <div class="card">
+                <h2>🏆 Live Leaderboard</h2>
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Student</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody">
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: #666;">No active game</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
-            <button type="submit" id="loginButton" class="login-button">Login</button>
-        </form>
+            <!-- Questions Management -->
+            <div class="card questions-section">
+                <h2>📝 Question Bank</h2>
+                
+                <!-- Import/Export Section -->
+                <div class="import-export-section">
+                    <h4>📂 Import/Export Questions</h4>
+                    
+                    <div class="import-buttons">
+                        <input type="file" id="questionFileInput" accept=".json" style="display: none;" onchange="importQuestions(event)">
+                        <button class="button button-secondary" onclick="document.getElementById('questionFileInput').click()" style="padding: 8px 16px; font-size: 14px;">
+                            📥 Import JSON
+                        </button>
+                        <button class="button button-secondary" onclick="exportQuestions()" style="padding: 8px 16px; font-size: 14px;">
+                            📤 Export JSON
+                        </button>
+                        <button class="button button-secondary" onclick="loadSampleQuestions()" style="padding: 8px 16px; font-size: 14px;">
+                            📋 Load Sample Questions
+                        </button>
+                        <button class="button button-danger" onclick="clearAllQuestions()" style="padding: 8px 16px; font-size: 14px;">
+                            🗑️ Clear All
+                        </button>
+                    </div>
+                    
+                    <details class="format-guide">
+                        <summary>📝 JSON Format Guide</summary>
+                        <pre>[
+  {
+    "id": 1,
+    "title": "Hello World",
+    "description": "Write a program that prints 'Hello, World!'",
+    "hint": "Use printf() function",
+    "expected_output": "Hello, World!\\n"
+  },
+  {
+    "id": 2,
+    "title": "Variable Output",
+    "description": "Print any message",
+    "hint": "Use any printf statement", 
+    "expected_output": "variable"
+  }
+]</pre>
+                        <p>💡 Use "variable" as expected_output to accept any output from students</p>
+                    </details>
+                </div>
 
-        <a href="/" class="back-link">← Back to Student View</a>
+                <div id="questionsList" class="questions-list">
+                    <!-- Questions will be loaded here -->
+                </div>
+
+                <div class="add-question-form">
+                    <h3>Add New Question</h3>
+                    <div class="form-group">
+                        <label for="questionTitle">Title:</label>
+                        <input type="text" id="questionTitle" placeholder="e.g., Hello World">
+                    </div>
+                    <div class="form-group">
+                        <label for="questionDescription">Description:</label>
+                        <textarea id="questionDescription" placeholder="Describe what the student should do..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="questionHint">Hint:</label>
+                        <input type="text" id="questionHint" placeholder="Give students a helpful hint...">
+                    </div>
+                    <div class="form-group">
+                        <label for="expectedOutput">Expected Output:</label>
+                        <textarea id="expectedOutput" placeholder="Exact output expected (use 'variable' for flexible validation)"></textarea>
+                    </div>
+                    <button class="button button-primary" onclick="addQuestion()">Add Question</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const button = document.getElementById('loginButton');
-            const errorDiv = document.getElementById('errorMessage');
-            
-            button.disabled = true;
-            button.textContent = 'Logging in...';
-            errorDiv.style.display = 'none';
-            
-            try {
-                const response = await fetch('/api/teacher/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    window.location.href = '/teacher';
-                } else {
-                    errorDiv.textContent = result.message || 'Invalid credentials';
-                    errorDiv.style.display = 'block';
-                }
-            } catch (error) {
-                errorDiv.textContent = 'Login failed. Please try again.';
-                errorDiv.style.display = 'block';
-            }
-            
-            button.disabled = false;
-            button.textContent = 'Login';
+        let questions = [];
+        let gameActive = false;
+        let currentQuestionIndex = -1;
+
+        // Initialize
+        window.addEventListener('load', function() {
+            loadQuestions();
+            updateGameStatus();
+            setInterval(updateLeaderboard, 3000); // Update every 3 seconds
         });
 
-        // Focus username field on load
-        document.getElementById('username').focus();
+        function loadQuestions() {
+            // Start with empty question bank
+            questions = [];
+            displayQuestions();
+        }
+
+        function displayQuestions() {
+            const container = document.getElementById('questionsList');
+            container.innerHTML = '';
+
+            if (questions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>📝 No Questions Yet</h3>
+                        <p>Start by importing questions from a JSON file, loading sample questions, or adding new questions manually.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            questions.forEach((question, index) => {
+                const isCurrent = gameActive && index === currentQuestionIndex;
+                const questionDiv = document.createElement('div');
+                questionDiv.className = `question-item ${isCurrent ? 'current' : ''}`;
+                
+                questionDiv.innerHTML = `
+                    <div class="question-header">
+                        <div class="question-title">${question.title}</div>
+                        <div class="question-actions">
+                            <button class="button button-danger" onclick="deleteQuestion(${question.id})" style="padding: 5px 10px; font-size: 12px;">Delete</button>
+                        </div>
+                    </div>
+                    <div class="question-description">${question.description}</div>
+                    <div class="question-hint">💡 ${question.hint}</div>
+                    <div class="expected-output">Expected: ${question.expected_output === 'variable' ? '(Any output)' : question.expected_output}</div>
+                `;
+                
+                container.appendChild(questionDiv);
+            });
+        }
+
+        function addQuestion() {
+            const title = document.getElementById('questionTitle').value.trim();
+            const description = document.getElementById('questionDescription').value.trim();
+            const hint = document.getElementById('questionHint').value.trim();
+            const expectedOutput = document.getElementById('expectedOutput').value;
+
+            if (!title || !description || !hint) {
+                alert('Please fill in all required fields (Title, Description, Hint)');
+                return;
+            }
+
+            const newQuestion = {
+                id: Date.now(), // Simple ID generation
+                title: title,
+                description: description,
+                hint: hint,
+                expected_output: expectedOutput || 'variable'
+            };
+
+            questions.push(newQuestion);
+            displayQuestions();
+
+            // Clear form
+            document.getElementById('questionTitle').value = '';
+            document.getElementById('questionDescription').value = '';
+            document.getElementById('questionHint').value = '';
+            document.getElementById('expectedOutput').value = '';
+
+            alert('Question added successfully!');
+        }
+
+        function deleteQuestion(id) {
+            if (confirm('Are you sure you want to delete this question?')) {
+                questions = questions.filter(q => q.id !== id);
+                displayQuestions();
+            }
+        }
+
+        function clearAllQuestions() {
+            if (questions.length === 0) {
+                alert('No questions to clear');
+                return;
+            }
+
+            // Prevent clearing questions during an active game
+            if (gameActive) {
+                alert('Cannot clear questions while a game is active. Please stop the game first.');
+                return;
+            }
+
+            if (confirm(`Are you sure you want to delete all ${questions.length} questions? This cannot be undone.`)) {
+                questions = [];
+                displayQuestions();
+                updateGameStatus(); // Update the UI state
+                alert('All questions cleared successfully!');
+            }
+        }
+
+        // Import/Export Functions
+        function importQuestions(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedQuestions = JSON.parse(e.target.result);
+                    
+                    // Validate the format
+                    if (!Array.isArray(importedQuestions)) {
+                        throw new Error('JSON must be an array of questions');
+                    }
+
+                    // Validate each question
+                    const validQuestions = [];
+                    for (let i = 0; i < importedQuestions.length; i++) {
+                        const q = importedQuestions[i];
+                        if (!q.title || !q.description || !q.hint) {
+                            console.warn(`Skipping question ${i + 1}: missing required fields`);
+                            continue;
+                        }
+                        
+                        // Ensure unique ID
+                        const newQuestion = {
+                            id: q.id || Date.now() + Math.random(),
+                            title: q.title,
+                            description: q.description,
+                            hint: q.hint,
+                            expected_output: q.expected_output || 'variable'
+                        };
+                        validQuestions.push(newQuestion);
+                    }
+
+                    if (validQuestions.length === 0) {
+                        alert('No valid questions found in the file');
+                        return;
+                    }
+
+                    // Ask user whether to replace or append
+                    const replace = confirm(
+                        `Found ${validQuestions.length} valid questions.\\n\\n` +
+                        `Click OK to REPLACE all current questions\\n` +
+                        `Click Cancel to ADD to current questions`
+                    );
+
+                    if (replace) {
+                        questions = validQuestions;
+                    } else {
+                        // Append and ensure unique IDs
+                        validQuestions.forEach(newQ => {
+                            while (questions.some(existingQ => existingQ.id === newQ.id)) {
+                                newQ.id = Date.now() + Math.random();
+                            }
+                            questions.push(newQ);
+                        });
+                    }
+
+                    displayQuestions();
+                    alert(`Successfully imported ${validQuestions.length} questions!`);
+                    
+                } catch (error) {
+                    alert('Error importing questions: ' + error.message);
+                }
+            };
+            
+            reader.readAsText(file);
+            // Reset file input
+            event.target.value = '';
+        }
+
+        function exportQuestions() {
+            if (questions.length === 0) {
+                alert('No questions to export');
+                return;
+            }
+
+            const dataStr = JSON.stringify(questions, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `c_programming_questions_${new Date().toISOString().split('T')[0]}.json`;
+            
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            URL.revokeObjectURL(link.href);
+            alert('Questions exported successfully!');
+        }
+
+        function loadSampleQuestions() {
+            const sampleQuestions = [
+                {
+                    id: 1,
+                    title: "Hello World",
+                    description: "Write a program that prints 'Hello, World!' to the screen.",
+                    hint: "Use printf() to print text",
+                    expected_output: "Hello, World!\\n"
+                },
+                {
+                    id: 2,
+                    title: "Simple Addition",
+                    description: "Write a program that prints the result of 5 + 3.",
+                    hint: "Calculate 5 + 3 and print the result",
+                    expected_output: "8\\n"
+                },
+                {
+                    id: 3,
+                    title: "Variables Demo",
+                    description: "Create two integer variables (a=10, b=20) and print their sum.",
+                    hint: "Declare int variables and use printf to show their sum",
+                    expected_output: "30\\n"
+                },
+                {
+                    id: 4,
+                    title: "Simple Loop",
+                    description: "Print numbers 1 to 5, each on a new line.",
+                    hint: "Use a for loop from 1 to 5",
+                    expected_output: "1\\n2\\n3\\n4\\n5\\n"
+                },
+                {
+                    id: 5,
+                    title: "Print Your Name",
+                    description: "Write a program that prints your name.",
+                    hint: "Use printf() with any name",
+                    expected_output: "variable"
+                },
+                {
+                    id: 6,
+                    title: "Even Numbers",
+                    description: "Print all even numbers from 2 to 10.",
+                    hint: "Use a loop and check if number % 2 == 0",
+                    expected_output: "2\\n4\\n6\\n8\\n10\\n"
+                },
+                {
+                    id: 7,
+                    title: "Simple Calculator",
+                    description: "Create variables for two numbers (12 and 8) and print their sum, difference, product, and quotient on separate lines.",
+                    hint: "Use multiple printf statements for each operation",
+                    expected_output: "20\\n4\\n96\\n1\\n"
+                },
+                {
+                    id: 8,
+                    title: "Character Variables",
+                    description: "Declare a character variable with value 'A' and print it.",
+                    hint: "Use char data type and %c format specifier",
+                    expected_output: "A\\n"
+                },
+                {
+                    id: 9,
+                    title: "Float Addition",
+                    description: "Add two floating point numbers (3.5 + 2.7) and print the result with 1 decimal place.",
+                    hint: "Use float variables and %.1f format specifier",
+                    expected_output: "6.2\\n"
+                },
+                {
+                    id: 10,
+                    title: "Simple If Statement",
+                    description: "Create an integer variable with value 15. If it's greater than 10, print 'Big number'.",
+                    hint: "Use if statement to check condition",
+                    expected_output: "Big number\\n"
+                }
+            ];
+
+            if (questions.length > 0) {
+                const replace = confirm(
+                    `This will load ${sampleQuestions.length} sample questions.\\n\\n` +
+                    `Click OK to REPLACE all current questions\\n` +
+                    `Click Cancel to ADD to current questions`
+                );
+
+                if (replace) {
+                    questions = [...sampleQuestions];
+                } else {
+                    // Add sample questions with unique IDs
+                    sampleQuestions.forEach(sampleQ => {
+                        const newQ = { ...sampleQ };
+                        while (questions.some(existingQ => existingQ.id === newQ.id)) {
+                            newQ.id = Date.now() + Math.random();
+                        }
+                        questions.push(newQ);
+                    });
+                }
+            } else {
+                questions = [...sampleQuestions];
+            }
+
+            displayQuestions();
+            alert(`Successfully loaded ${sampleQuestions.length} sample questions!`);
+        }
+
+        async function startGame() {
+            if (questions.length === 0) {
+                alert('Please add at least one question before starting a game');
+                return;
+            }
+
+            const timer = parseInt(document.getElementById('timerInput').value) || 5;
+
+            try {
+                const response = await fetch('/api/game/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        questions: questions,
+                        timer: timer
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    gameActive = true;
+                    currentQuestionIndex = 0;
+                    updateGameStatus();
+                    displayQuestions();
+                    alert('Game started! Students can now join.');
+                }
+            } catch (error) {
+                alert('Failed to start game: ' + error.message);
+            }
+        }
+
+        async function nextQuestion() {
+            try {
+                const response = await fetch('/api/game/next', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    currentQuestionIndex++;
+                    updateGameStatus();
+                    displayQuestions();
+                }
+            } catch (error) {
+                alert('Failed to go to next question: ' + error.message);
+            }
+        }
+
+        async function stopGame() {
+            if (confirm('Are you sure you want to stop the current game?')) {
+                try {
+                    const response = await fetch('/api/game/stop', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        gameActive = false;
+                        currentQuestionIndex = -1;
+                        updateGameStatus();
+                        displayQuestions();
+                        alert('Game stopped.');
+                    }
+                } catch (error) {
+                    alert('Failed to stop game: ' + error.message);
+                }
+            }
+        }
+
+        function updateGameStatus() {
+            const statusDiv = document.getElementById('gameStatus');
+            const startBtn = document.getElementById('startGameBtn');
+            const nextBtn = document.getElementById('nextQuestionBtn');
+            const stopBtn = document.getElementById('stopGameBtn');
+
+            if (gameActive) {
+                statusDiv.className = 'game-status status-active';
+                statusDiv.textContent = `Active - Question ${currentQuestionIndex + 1} of ${questions.length}`;
+                startBtn.disabled = true;
+                nextBtn.disabled = currentQuestionIndex >= questions.length - 1;
+                stopBtn.disabled = false;
+            } else {
+                statusDiv.className = 'game-status status-inactive';
+                statusDiv.textContent = 'No active game';
+                startBtn.disabled = false;
+                nextBtn.disabled = true;
+                stopBtn.disabled = true;
+            }
+        }
+
+        async function updateLeaderboard() {
+            if (!gameActive) return;
+
+            try {
+                const response = await fetch('/api/leaderboard');
+                const leaderboard = await response.json();
+                displayLeaderboard(leaderboard);
+            } catch (error) {
+                console.error('Failed to update leaderboard:', error);
+            }
+        }
+
+        function displayLeaderboard(leaderboard) {
+            const tbody = document.getElementById('leaderboardBody');
+            tbody.innerHTML = '';
+
+            if (leaderboard.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #666;">No participants yet</td></tr>';
+                return;
+            }
+
+            leaderboard.forEach((student, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="rank">#${index + 1}</td>
+                    <td>${student.nickname}</td>
+                    <td>${student.score}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function openLeaderboard() {
+            // Open leaderboard in a new window/tab for presentation
+            const leaderboardWindow = window.open('/leaderboard', 'leaderboard', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+            
+            if (leaderboardWindow) {
+                leaderboardWindow.focus();
+            } else {
+                // Fallback if popup blocked
+                alert('Please allow popups for this site, or manually navigate to /leaderboard in a new tab');
+            }
+        }
+
+        async function logout() {
+            try {
+                await fetch('/api/teacher/logout', { method: 'POST' });
+                window.location.href = '/teacher';
+            } catch (error) {
+                window.location.href = '/teacher';
+            }
+        }
     </script>
 </body>
-</html> 
+</html>

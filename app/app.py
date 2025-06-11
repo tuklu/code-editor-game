@@ -263,6 +263,11 @@ def get_leaderboard():
     
     return jsonify(leaderboard)
 
+@app.route('/leaderboard')
+def leaderboard_page():
+    """Serve the standalone leaderboard page"""
+    return render_template('leaderboard.html')
+
 if __name__ == '__main__':
     load_game_state()
     app.run(host='0.0.0.0', port=5000, debug=True)
