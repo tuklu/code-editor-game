@@ -87,6 +87,13 @@ def teacher_logout():
     session.pop('is_teacher', None)
     return jsonify({'success': True})
 
+@app.route('/api/teacher/status', methods=['GET'])
+def teacher_status():
+    """Check if user is authenticated as teacher"""
+    return jsonify({
+        'authenticated': session.get('is_teacher', False)
+    })
+
 @app.route('/api/game/start', methods=['POST'])
 def start_game():
     if not session.get('is_teacher'):

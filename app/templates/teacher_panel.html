@@ -393,6 +393,9 @@
                     <button id="stopGameBtn" class="button button-danger" onclick="stopGame()" disabled>
                         ⏹️ Stop Game
                     </button>
+                    <button class="button button-secondary" onclick="openLeaderboard()" style="background: #9C27B0;">
+                        📺 Open Leaderboard View
+                    </button>
                 </div>
             </div>
 
@@ -493,13 +496,37 @@
         let questions = [];
         let gameActive = false;
         let currentQuestionIndex = -1;
+        let isTeacher = false;
 
         // Initialize
         window.addEventListener('load', function() {
-            loadQuestions();
-            updateGameStatus();
-            setInterval(updateLeaderboard, 3000); // Update every 3 seconds
+            checkTeacherAuth();
         });
+
+        async function checkTeacherAuth() {
+            try {
+                // Check if user is authenticated as teacher
+                const response = await fetch('/api/teacher/status');
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.authenticated) {
+                        isTeacher = true;
+                        loadQuestions();
+                        updateGameStatus();
+                        setInterval(updateLeaderboard, 3000); // Update every 3 seconds
+                    } else {
+                        // Redirect to login if not authenticated
+                        window.location.href = '/teacher';
+                    }
+                } else {
+                    // Redirect to login if check fails
+                    window.location.href = '/teacher';
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                window.location.href = '/teacher';
+            }
+        }
 
         function loadQuestions() {
             // Start with empty question bank
@@ -917,6 +944,18 @@
                 `;
                 tbody.appendChild(row);
             });
+        }
+
+        function openLeaderboard() {
+            // Open leaderboard in a new window/tab for presentation
+            const leaderboardWindow = window.open('/leaderboard', 'leaderboard', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+            
+            if (leaderboardWindow) {
+                leaderboardWindow.focus();
+            } else {
+                // Fallback if popup blocked
+                alert('Please allow popups for this site, or manually navigate to /leaderboard in a new tab');
+            }
         }
 
         async function logout() {
