@@ -338,15 +338,6 @@ function sendInput(event) {
         const inputData = input + '\n';
         socket.emit('input', { data: inputData });
         
-        // Echo input to output for user feedback
-        if (output) {
-            if (input.trim() !== '') {
-                output.textContent += `Input: ${input}\n`;
-            } else {
-                output.textContent += `Input: [Enter]\n`;
-            }
-            output.scrollTop = output.scrollHeight;
-        }
         
         inputField.value = '';
         inputField.focus();
