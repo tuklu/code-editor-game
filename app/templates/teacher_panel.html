@@ -960,10 +960,28 @@
 
         async function logout() {
             try {
-                await fetch('/api/teacher/logout', { method: 'POST' });
-                window.location.href = '/teacher';
+                const response = await fetch('/api/teacher/logout', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    // Clear local state
+                    isTeacher = false;
+                    questions = [];
+                    gameActive = false;
+                    currentQuestionIndex = -1;
+                    
+                    // Force redirect to login page
+                    window.location.replace('/teacher');
+                } else {
+                    // Force redirect even if API call failed
+                    window.location.replace('/teacher');
+                }
             } catch (error) {
-                window.location.href = '/teacher';
+                console.error('Logout error:', error);
+                // Force redirect even if network error
+                window.location.replace('/teacher');
             }
         }
     </script>
