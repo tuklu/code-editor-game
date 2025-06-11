@@ -220,6 +220,7 @@ def run_code():
                     })
                     save_game_state()
             
+            # Return both output and any compilation warnings
             response = {
                 'output': output,
                 'stderr': run_result.stderr,

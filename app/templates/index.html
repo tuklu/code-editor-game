@@ -777,67 +777,74 @@ int main() {
         }
 
         async function runCode() {
-            const code = getEditorValue();
-            const button = document.getElementById('runButton');
-            const output = document.getElementById('output');
-            const successMessage = document.getElementById('successMessage');
+        const code = getEditorValue();
+        const button = document.getElementById('runButton');
+        const output = document.getElementById('output');
+        const successMessage = document.getElementById('successMessage');
 
-            if (!code.trim()) {
-                alert('Please write some code first!');
-                return;
-            }
-
-            button.disabled = true;
-            button.textContent = '⏳ Running...';
-            output.textContent = 'Compiling and running your code...';
-            output.className = 'output';
-            successMessage.style.display = 'none';
-
-            try {
-                const response = await fetch('/run', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        code: code,
-                        nickname: currentNickname
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error('Server not available');
-                }
-
-                const result = await response.json();
-                
-                if (result.error) {
-                    output.className = 'output error';
-                    output.textContent = '❌ Error:\n' + result.error;
-                } else {
-                    output.className = 'output success';
-                    output.textContent = '✅ Output:\n' + (result.output || '(No output produced)');
-                    
-                    if (result.stderr) {
-                        output.textContent += '\n\n⚠️ Warnings:\n' + result.stderr;
-                    }
-
-                    // Handle challenge completion
-                    if (result.challenge_cleared) {
-                        successMessage.style.display = 'block';
-                        successMessage.textContent = '🎉 Correct! Well done!';
-                        
-                        setTimeout(() => {
-                            successMessage.style.display = 'none';
-                        }, 3000);
-                    }
-                }
-            } catch (error) {
-                output.className = 'output error';
-                output.textContent = '❌ Server Error:\nServer is not available. This is a demo version.\n\nYour code looks like:\n' + code + '\n\nTo run C code locally:\n1. Install a C compiler (gcc)\n2. Save your code as program.c\n3. Compile: gcc -o program program.c\n4. Run: ./program';
-            }
-
-            button.disabled = false;
-            button.textContent = '▶ Run Code';
+        if (!code.trim()) {
+            alert('Please write some code first!');
+            return;
         }
+
+        button.disabled = true;
+        button.textContent = '⏳ Running...';
+        output.textContent = 'Compiling and running your code...';
+        output.className = 'output';
+        successMessage.style.display = 'none';
+
+        try {
+            const response = await fetch('/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    code: code,
+                    nickname: currentNickname
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Server not available');
+            }
+
+            const result = await response.json();
+
+            if (result.error) {
+                output.className = 'output error';
+                output.textContent = '❌ Error:\n' + result.error;
+            } else {
+                output.className = 'output success';
+                let outputText = '✅ Output:\n' + (result.output || '(No output produced)');
+                
+                // Show compilation warnings if they exist
+                if (result.warnings && result.warnings.trim()) {
+                    outputText += '\n\n⚠️ Compilation Warnings:\n' + result.warnings;
+                }
+                
+                // Show runtime stderr if it exists (separate from warnings)
+                if (result.stderr && result.stderr.trim()) {
+                    outputText += '\n\n📝 Runtime Info:\n' + result.stderr;
+                }
+                
+                output.textContent = outputText;
+
+                // Handle challenge completion
+                if (result.challenge_cleared) {
+                    successMessage.style.display = 'block';
+                    successMessage.textContent = '🎉 Correct! Well done!';
+                    setTimeout(() => {
+                        successMessage.style.display = 'none';
+                    }, 3000);
+                }
+            }
+        } catch (error) {
+            output.className = 'output error';
+            output.textContent = '❌ Server Error:\nServer is not available. This is a demo version.\n\nYour code looks like:\n' + code + '\n\nTo run C code locally:\n1. Install a C compiler (gcc)\n2. Save your code as program.c\n3. Compile: gcc -o program program.c\n4. Run: ./program';
+        }
+
+    button.disabled = false;
+    button.textContent = '▶ Run Code';
+}
     </script>
 </body>
 </html>
