@@ -48,10 +48,24 @@
             </div>
         </div>
 
-        <!-- Code Editor -->
-        <div class="editor-container">
-            <div class="editor-section">
-                <div class="editor-header">📝 Code Editor</div>
+        <!-- Mobile Tabs (shown on mobile only) -->
+        <div class="mobile-tabs" id="mobileTabs">
+            <button class="tab-button active" onclick="switchTab('editor')">📝 Editor</button>
+            <button class="tab-button" onclick="switchTab('output')">📤 Output</button>
+        </div>
+
+        <!-- Code Editor Container -->
+        <div class="editor-container" id="editorContainer">
+            <!-- Editor Section -->
+            <div class="editor-section" id="editorSection">
+                <div class="editor-header">
+                    <span>📝 Code Editor</span>
+                    <div class="header-controls">
+                        <button class="control-button" onclick="toggleMaximize()" id="maximizeBtn" title="Maximize Editor">
+                            ⛶ Maximize
+                        </button>
+                    </div>
+                </div>
                 <div id="editor">
                     <div class="loading">⏳ Loading Monaco Editor...</div>
                 </div>
@@ -70,19 +84,32 @@
                     <button id="reconnectButton" class="clear-button" onclick="reconnectSocket()" style="background: #2196F3; display: none;">🔄 Reconnect</button>
                     <button class="clear-button" onclick="clearCode()">🗑 Clear</button>
                 </div>
-                <div id="successMessage" class="success-message"></div>
             </div>
 
-            <div class="editor-section">
-                <div class="editor-header">📤 Output</div>
-                <div id="output" class="output">🔌 Initializing connection...</div>
-                <div style="padding: 15px 20px; background: #1e1e1e; border-top: 1px solid #444;">
+            <!-- Output Section -->
+            <div class="output-section" id="outputSection">
+                <div class="editor-header">
+                    <span>📤 Output</span>
+                    <div class="header-controls">
+                        <button class="control-button" onclick="toggleWordWrap()" id="wrapBtn" title="Toggle Word Wrap">
+                            📄 Wrap
+                        </button>
+                        <button class="control-button" onclick="toggleOutput()" id="hideBtn" title="Hide Output Panel">
+                            👁️ Hide
+                        </button>
+                    </div>
+                </div>
+                <div id="output" class="output word-wrap">Connecting to server...
+Connected to C Programming Environment!
+Write your C code and click "Run Code" to execute it!
+Interactive input (scanf) is fully supported.
+--------------------------------------------------</div>
+                <div class="input-section">
                    <input id="inputField"
                           onkeypress="sendInput(event)"
                           placeholder="Type input here and press Enter..."
-                          disabled
-                          style="width:100%; padding:12px; background:#2d2d2d; color:white; border:1px solid #555; border-radius:8px;">
-                   <div style="font-size: 12px; color: #888; margin-top: 5px;">
+                          disabled>
+                   <div class="input-hint">
                        💡 When your program asks for input, type here and press Enter
                    </div>
                 </div>
@@ -94,5 +121,149 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="/static/monaco-loader.js"></script>
     <script src="/static/app.js"></script>
+    
+    <script>
+        // Enhanced UI Controls
+        let isMaximized = false;
+        let isOutputHidden = false;
+        let isWordWrapEnabled = true;
+        let currentMobileTab = 'editor';
+
+        // Maximize/Restore Editor
+        function toggleMaximize() {
+            const container = document.getElementById('editorContainer');
+            const btn = document.getElementById('maximizeBtn');
+            
+            isMaximized = !isMaximized;
+            
+            if (isMaximized) {
+                container.classList.add('maximized');
+                btn.innerHTML = '⬌ Restore';
+                btn.title = 'Restore Split View';
+            } else {
+                container.classList.remove('maximized');
+                btn.innerHTML = '⛶ Maximize';
+                btn.title = 'Maximize Editor';
+            }
+            
+            // Trigger Monaco resize if available
+            if (window.monacoEditor && window.monacoEditor.layout) {
+                setTimeout(() => window.monacoEditor.layout(), 100);
+            }
+        }
+
+        // Hide/Show Output Panel
+        function toggleOutput() {
+            const outputSection = document.getElementById('outputSection');
+            const btn = document.getElementById('hideBtn');
+            const container = document.getElementById('editorContainer');
+            
+            isOutputHidden = !isOutputHidden;
+            
+            if (isOutputHidden) {
+                container.classList.add('maximized');
+                btn.innerHTML = '👁️ Show';
+                btn.title = 'Show Output Panel';
+            } else {
+                container.classList.remove('maximized');
+                btn.innerHTML = '👁️ Hide';
+                btn.title = 'Hide Output Panel';
+            }
+            
+            // Trigger Monaco resize
+            if (window.monacoEditor && window.monacoEditor.layout) {
+                setTimeout(() => window.monacoEditor.layout(), 100);
+            }
+        }
+
+        // Toggle Word Wrap in Output
+        function toggleWordWrap() {
+            const output = document.getElementById('output');
+            const btn = document.getElementById('wrapBtn');
+            
+            isWordWrapEnabled = !isWordWrapEnabled;
+            
+            if (isWordWrapEnabled) {
+                output.classList.remove('no-wrap');
+                output.classList.add('word-wrap');
+                btn.innerHTML = '📄 Wrap';
+                btn.classList.remove('active');
+            } else {
+                output.classList.remove('word-wrap');
+                output.classList.add('no-wrap');
+                btn.innerHTML = '📜 No Wrap';
+                btn.classList.add('active');
+            }
+        }
+
+        // Mobile Tab Switching
+        function switchTab(tab) {
+            const editorSection = document.getElementById('editorSection');
+            const outputSection = document.getElementById('outputSection');
+            const tabButtons = document.querySelectorAll('.tab-button');
+            
+            currentMobileTab = tab;
+            
+            // Remove active class from all tabs
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            
+            if (tab === 'editor') {
+                editorSection.classList.remove('hidden');
+                outputSection.classList.add('hidden');
+                tabButtons[0].classList.add('active');
+                
+                // Trigger Monaco resize when switching to editor
+                if (window.monacoEditor && window.monacoEditor.layout) {
+                    setTimeout(() => window.monacoEditor.layout(), 100);
+                }
+            } else {
+                editorSection.classList.add('hidden');
+                outputSection.classList.remove('hidden');
+                tabButtons[1].classList.add('active');
+            }
+        }
+
+        // Auto-switch to output tab when program runs (mobile only)
+        function autoSwitchToOutput() {
+            if (window.innerWidth <= 768 && currentMobileTab === 'editor') {
+                setTimeout(() => switchTab('output'), 500);
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + M = Maximize
+            if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
+                e.preventDefault();
+                toggleMaximize();
+            }
+            
+            // Ctrl/Cmd + H = Hide Output
+            if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+                e.preventDefault();
+                toggleOutput();
+            }
+            
+            // Ctrl/Cmd + W = Toggle Word Wrap
+            if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
+                e.preventDefault();
+                toggleWordWrap();
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            if (window.monacoEditor && window.monacoEditor.layout) {
+                window.monacoEditor.layout();
+            }
+        });
+
+        // Export functions globally
+        window.toggleMaximize = toggleMaximize;
+        window.toggleOutput = toggleOutput;
+        window.toggleWordWrap = toggleWordWrap;
+        window.switchTab = switchTab;
+        window.autoSwitchToOutput = autoSwitchToOutput;
+    </script>
 </body>
 </html>
