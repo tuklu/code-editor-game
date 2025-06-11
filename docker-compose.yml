@@ -1,14 +1,54 @@
-version: '3.8'
-
 services:
-  c-programming-platform:
-    build: .
+  c-practice-platform:
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "5050:5000"
     volumes:
-      - ./app:/app
+      # Mount the app directory for development (read-write for live updates)
+      - ./app:/app:rw
+      # Create named volumes for data persistence
+      - app_data:/app/data
+      - app_logs:/app/logs
     environment:
       - FLASK_ENV=development
-      - FLASK_DEBUG=1
+      - FLASK_DEBUG=0  # Disable debug in Docker for better performance
+      - PYTHONUNBUFFERED=1
+      - EVENTLET_HUB=poll  # Better for Docker
+      - MAX_SESSIONS=30
+      - COMPILE_TIMEOUT=15
+      - EXECUTION_TIMEOUT=30
     restart: unless-stopped
     container_name: c-programming-classroom
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5050/api/game/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Enable TTY for proper PTY support
+    tty: true
+    # Add capabilities needed for PTY
+    cap_add:
+      - SYS_PTRACE
+    # Temporary file system for security
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+
+volumes:
+  app_data:
+  app_logs:
