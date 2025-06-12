@@ -172,7 +172,9 @@ function createFallbackEditor() {
     const defaultCode = `#include <stdio.h>
 
 int main() {
-    printf("Hello, World!\\n");
+
+    //your code goes here
+
     return 0;
 }`;
     
