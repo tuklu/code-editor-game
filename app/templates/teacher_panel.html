@@ -7,6 +7,26 @@
     <link rel="stylesheet" href="/static/teacher.css">
 </head>
 <body>
+    <!-- Custom Modal System -->
+    <div id="customModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Confirm Action</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modalMessage">Are you sure?</p>
+            </div>
+            <div class="modal-footer">
+                <button id="modalCancel" class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancel</button>
+                <button id="modalConfirm" class="modal-btn modal-btn-danger" onclick="confirmModal()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <div class="header">
         <div class="header-content">
             <h1>Teacher Control Panel</h1>
@@ -24,41 +44,101 @@
                     No active game
                 </div>
 
-                <div class="timer-section">
-                    <label for="timerInput">Question Timer (minutes):</label>
-                    <input type="number" id="timerInput" class="timer-input" min="1" max="60" value="5" placeholder="Enter timer in minutes">
+                <!-- Quiz Mode Selection -->
+                <div class="quiz-mode-section">
+                    <h4>Quiz Mode</h4>
+                    <div class="mode-options">
+                        <label class="mode-option">
+                            <input type="radio" name="quizMode" value="manual" checked>
+                            <span class="mode-label">
+                                <strong>Manual Control</strong>
+                                <small>Teacher controls question progression</small>
+                            </span>
+                        </label>
+                        
+                        <label class="mode-option">
+                            <input type="radio" name="quizMode" value="auto">
+                            <span class="mode-label">
+                                <strong>Auto Progression</strong>
+                                <small>Next question on correct answer</small>
+                            </span>
+                        </label>
+                        
+                        <label class="mode-option">
+                            <input type="radio" name="quizMode" value="timed-total">
+                            <span class="mode-label">
+                                <strong>Total Time Limit</strong>
+                                <small>Overall quiz time limit</small>
+                            </span>
+                        </label>
+                        
+                        <label class="mode-option">
+                            <input type="radio" name="quizMode" value="timed-per-question">
+                            <span class="mode-label">
+                                <strong>Per Question Timer</strong>
+                                <small>Time limit for each question</small>
+                            </span>
+                        </label>
+                    </div>
+                    
+                    <!-- Timer Settings (shown based on mode) -->
+                    <div id="timerSettings" class="timer-settings" style="display: none;">
+                        <div class="timer-input-group">
+                            <label for="timerMinutes">Time (minutes):</label>
+                            <input type="number" id="timerMinutes" min="1" max="120" value="10" placeholder="Enter minutes">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="game-controls">
-                    <button id="startGameBtn" class="button button-primary" onclick="startGame()">
-                        Start New Game
-                    </button>
-                    <button id="nextQuestionBtn" class="button button-secondary" onclick="nextQuestion()" disabled>
-                        Next Question
-                    </button>
-                    <button id="stopGameBtn" class="button button-danger" onclick="stopGame()" disabled>
-                        Stop Game
-                    </button>
-                    <button class="button button-secondary" onclick="openLeaderboard()" style="background: #9C27B0;">
-                        Open Leaderboard View
-                    </button>
+                    <div class="media-controls">
+                        <button id="startGameBtn" class="control-btn start-btn" onclick="startGame()" title="Start New Game">
+                            <span class="control-icon">▶</span>
+                            <span class="control-label">Start Quiz</span>
+                        </button>
+                        <button id="prevQuestionBtn" class="control-btn nav-btn" onclick="previousQuestion()" disabled title="Previous Question">
+                            <span class="control-icon">⏮</span>
+                        </button>
+                        <button id="nextQuestionBtn" class="control-btn nav-btn" onclick="nextQuestion()" disabled title="Next Question">
+                            <span class="control-icon">⏭</span>
+                        </button>
+                        <button id="stopGameBtn" class="control-btn stop-btn" onclick="stopGame()" disabled title="Stop Game">
+                            <span class="control-icon">⏹</span>
+                            <span class="control-label">Stop</span>
+                        </button>
+                    </div>
+                    
+                    <div class="quiz-info">
+                        <div id="questionCounter" class="question-counter">
+                            Questions ready: <span id="questionCount">0</span>
+                        </div>
+                        <div id="timerDisplay" class="timer-display" style="display: none;">
+                            Time remaining: <span id="timeRemaining">--:--</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Live Leaderboard -->
             <div class="card">
-                <h2>Live Leaderboard</h2>
+                <div class="card-header">
+                    <h2>Live Leaderboard</h2>
+                    <a href="/leaderboard" target="_blank" class="external-link" title="Open in new tab">
+                        View Fullscreen ↗
+                    </a>
+                </div>
                 <table class="leaderboard-table">
                     <thead>
                         <tr>
                             <th>Rank</th>
                             <th>Student</th>
                             <th>Score</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody id="leaderboardBody">
                         <tr>
-                            <td colspan="3" style="text-align: center; color: #666;">No active game</td>
+                            <td colspan="4" style="text-align: center; color: #666;">No active game</td>
                         </tr>
                     </tbody>
                 </table>
@@ -83,7 +163,7 @@
                         <button class="button button-secondary" onclick="loadSampleQuestions()" style="padding: 8px 16px; font-size: 14px;">
                             Load Sample Questions
                         </button>
-                        <button class="button button-danger" onclick="clearAllQuestions()" style="padding: 8px 16px; font-size: 14px;">
+                        <button class="button button-danger" onclick="confirmClearAllQuestions()" style="padding: 8px 16px; font-size: 14px;">
                             Clear All
                         </button>
                     </div>

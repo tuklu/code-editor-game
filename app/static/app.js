@@ -1,27 +1,30 @@
-// Main Application Variables
+// Student Panel Namespace
+window.StudentPanel = {
+    currentNickname: '',
+    gameJoined: false,
+    lastGameStatus: null,
+    programRunning: false,
+    connectionAttempts: 0,
+    maxRetries: 3,
+    
+    // Enhanced UI state variables
+    isMaximized: false,
+    isOutputHidden: false,
+    isWordWrapEnabled: true,
+    currentMobileTab: 'editor',
+    keyboardVisible: false,
+    mobileHeaderHeight: 150,
+    
+    // Socket.IO connection
+    socket: null
+};
+
+// Main Application Variables - Reference DOM elements
 const runButton = document.getElementById('runButton');
 const reconnectButton = document.getElementById('reconnectButton');
 const output = document.getElementById('output');
 const inputField = document.getElementById('inputField');
 const connectionStatus = document.getElementById('connectionStatus');
-
-let currentNickname = '';
-let gameJoined = false;
-let lastGameStatus = null;
-let programRunning = false;
-let connectionAttempts = 0;
-const maxRetries = 3;
-
-// Socket.IO connection
-let socket;
-
-// Enhanced UI state variables
-let isMaximized = false;
-let isOutputHidden = false;
-let isWordWrapEnabled = true;
-let currentMobileTab = 'editor';
-let keyboardVisible = false;
-let mobileHeaderHeight = 150;
 
 // Editor abstraction - handles Monaco/fallback gracefully to avoid recursion
 function getCodeFromEditor() {
@@ -46,13 +49,13 @@ function getCodeFromEditor() {
 
 // Initialize Socket.IO PTY namespace with production-grade retry configuration
 function initializeSocket() {
-    if (socket) {
-        socket.disconnect();
+    if (window.StudentPanel.socket) {
+        window.StudentPanel.socket.disconnect();
     }
     
     console.log('Initializing socket connection...');
     
-    socket = io('/pty', {
+    window.StudentPanel.socket = io('/pty', {
         transports: ['polling', 'websocket'],
         timeout: 20000,
         reconnection: true,
@@ -93,9 +96,9 @@ function isProgramComplete(data) {
 
 // Socket event handlers with enhanced state management for production reliability
 function setupSocketListeners() {
-    socket.on('connect', () => {
-        console.log('Socket.IO PTY connected - ID:', socket.id);
-        connectionAttempts = 0;
+    window.StudentPanel.socket.on('connect', () => {
+        console.log('Socket.IO PTY connected - ID:', window.StudentPanel.socket.id);
+        window.StudentPanel.connectionAttempts = 0;
         
         if (runButton) runButton.disabled = false;
         if (inputField) {
@@ -115,12 +118,12 @@ function setupSocketListeners() {
         }
         
         // Reset UI state only if no program is currently running
-        if (!programRunning) {
+        if (!window.StudentPanel.programRunning) {
             resetUIState();
         }
     });
     
-    socket.on('pty-output', (data) => {
+    window.StudentPanel.socket.on('pty-output', (data) => {
         console.log('Received PTY output length:', data.length);
         if (output) {
             output.textContent += data;
@@ -131,7 +134,7 @@ function setupSocketListeners() {
         // This prevents race conditions where users lose the ability to stop hung programs
         if ((data.includes('Enter') || data.includes('input') || data.includes('scanf')) && 
             (data.includes(':') || data.includes('?')) && 
-            programRunning && inputField) {
+            window.StudentPanel.programRunning && inputField) {
             inputField.style.borderColor = '#FFD700';
             inputField.placeholder = "Program waiting for input - type here and press Enter";
             inputField.focus();
@@ -147,7 +150,7 @@ function setupSocketListeners() {
                 const resp = await fetch('/api/game/status');
                 const status = await resp.json();
                 if (!status.active) return;
-                if (!gameJoined) return;
+                if (!window.StudentPanel.gameJoined) return;
                 const nickname = sessionStorage.getItem('nickname');
                 const code = getCodeFromEditor();
                 const submitResp = await fetch('/api/game/submit', {
@@ -166,10 +169,10 @@ function setupSocketListeners() {
         }
     });
     
-    socket.on('disconnect', (reason) => {
+    window.StudentPanel.socket.on('disconnect', (reason) => {
         console.log('Socket.IO PTY disconnected:', reason);
         
-        if (connectionAttempts < maxRetries && output) {
+        if (window.StudentPanel.connectionAttempts < window.StudentPanel.maxRetries && output) {
             output.textContent += `\nConnection lost (${reason}), reconnecting...\n`;
         }
         
@@ -178,29 +181,29 @@ function setupSocketListeners() {
             inputField.disabled = true;
             inputField.style.borderColor = '#ff6b6b';
         }
-        connectionAttempts++;
+        window.StudentPanel.connectionAttempts++;
     });
     
-    socket.on('connect_error', (error) => {
+    window.StudentPanel.socket.on('connect_error', (error) => {
         console.error('Socket.IO connection error:', error);
-        connectionAttempts++;
+        window.StudentPanel.connectionAttempts++;
         
-        if (connectionAttempts >= maxRetries && output) {
-            output.textContent += `\nFailed to connect after ${maxRetries} attempts.\n`;
+        if (window.StudentPanel.connectionAttempts >= window.StudentPanel.maxRetries && output) {
+            output.textContent += `\nFailed to connect after ${window.StudentPanel.maxRetries} attempts.\n`;
             output.textContent += 'Click the Reconnect button to try again.\n';
             if (reconnectButton) reconnectButton.style.display = 'inline-block';
             if (runButton) runButton.disabled = true;
             if (inputField) inputField.disabled = true;
         } else if (output) {
-            output.textContent += `\nConnection attempt ${connectionAttempts} failed, retrying...\n`;
+            output.textContent += `\nConnection attempt ${window.StudentPanel.connectionAttempts} failed, retrying...\n`;
         }
     });
     
-    socket.on('reconnect', (attemptNumber) => {
+    window.StudentPanel.socket.on('reconnect', (attemptNumber) => {
         console.log('Socket.IO reconnected after', attemptNumber, 'attempts');
-        connectionAttempts = 0;
+        window.StudentPanel.connectionAttempts = 0;
         
-        if (!programRunning && output) {
+        if (!window.StudentPanel.programRunning && output) {
             output.textContent += `\nReconnected successfully!\n`;
         }
         
@@ -215,7 +218,7 @@ function setupSocketListeners() {
 // Resets UI to initial state after confirmed program termination
 function resetUIState() {
     console.log('Resetting UI state - Program terminated');
-    programRunning = false;
+    window.StudentPanel.programRunning = false;
     
     // Toggle button back to run state
     if (runButton) {
@@ -240,7 +243,7 @@ function resetUIState() {
 function reconnectSocket() {
     if (output) output.textContent += '\nManually reconnecting...\n';
     if (reconnectButton) reconnectButton.style.display = 'none';
-    connectionAttempts = 0;
+    window.StudentPanel.connectionAttempts = 0;
     
     if (connectionStatus) {
         connectionStatus.textContent = 'Reconnecting...';
@@ -254,7 +257,7 @@ function reconnectSocket() {
 // Enhanced toggle-based code execution with mobile auto-switch
 function runCode() {
     // Toggle: if program running, stop it instead
-    if (programRunning) {
+    if (window.StudentPanel.programRunning) {
         stopProgram();
         return;
     }
@@ -268,13 +271,13 @@ function runCode() {
         return;
     }
     
-    if (!socket || !socket.connected) {
+    if (!window.StudentPanel.socket || !window.StudentPanel.socket.connected) {
         if (output) output.textContent += 'Not connected to server. Attempting to reconnect...\n';
         initializeSocket();
         
         // Retry mechanism with reasonable timeout
         setTimeout(() => {
-            if (socket && socket.connected) {
+            if (window.StudentPanel.socket && window.StudentPanel.socket.connected) {
                 runCode();
             } else if (output) {
                 output.textContent += 'Failed to reconnect. Please try the Reconnect button or refresh the page.\n';
@@ -293,7 +296,7 @@ function runCode() {
     autoSwitchToOutput();
     
     // Update UI to stop mode - allows user to terminate hung programs
-    programRunning = true;
+    window.StudentPanel.programRunning = true;
     if (runButton) {
         runButton.disabled = false;
         runButton.textContent = 'Stop Program';
@@ -308,11 +311,11 @@ function runCode() {
     }
     
     console.log('Emitting run event with code length:', code.length);
-    socket.emit('run', { code: code });
+    window.StudentPanel.socket.emit('run', { code: code });
     
     // Failsafe timeout for programs that may hang without proper termination signals
     setTimeout(() => {
-        if (programRunning && output) {
+        if (window.StudentPanel.programRunning && output) {
             console.log('Failsafe timeout triggered - program may have hung');
             output.textContent += '\nProgram execution seems to be taking too long.\n';
             output.textContent += 'Click "Stop Program" to terminate it.\n';
@@ -321,7 +324,7 @@ function runCode() {
 }
 
 function stopProgram() {
-    if (!socket || !socket.connected) {
+    if (!window.StudentPanel.socket || !window.StudentPanel.socket.connected) {
         if (output) output.textContent += 'Not connected to server\n';
         reconnectSocket();
         return;
@@ -337,7 +340,7 @@ function stopProgram() {
         runButton.style.background = '#666';
     }
     
-    socket.emit('kill');
+    window.StudentPanel.socket.emit('kill');
     if (output) output.textContent += '\nStopping program...\n';
     
     // Reset UI after brief delay to allow server cleanup
@@ -355,19 +358,19 @@ function sendInput(event) {
         
         console.log('Sending input:', input);
         
-        if (!socket || !socket.connected) {
+        if (!window.StudentPanel.socket || !window.StudentPanel.socket.connected) {
             if (output) output.textContent += 'Not connected to server\n';
             return;
         }
         
-        if (!programRunning) {
+        if (!window.StudentPanel.programRunning) {
             console.log('No program running to send input to');
             return;
         }
         
         // Send input with newline (required for most C programs)
         const inputData = input + '\n';
-        socket.emit('input', { data: inputData });
+        window.StudentPanel.socket.emit('input', { data: inputData });
         
         // REMOVED: No longer echo input to output artificially
         // The terminal echo will handle showing the input naturally
@@ -380,7 +383,7 @@ function sendInput(event) {
         inputField.placeholder = "Program may ask for more input...";
         
         // Ensure stop button remains active since program continues running
-        if (runButton && programRunning) {
+        if (runButton && window.StudentPanel.programRunning) {
             runButton.disabled = false;
             runButton.textContent = 'Stop Program';
             runButton.className = 'run-button stop-button';
@@ -403,14 +406,14 @@ function setNickname() {
     
     const nickname = nicknameInput.value.trim();
     if (nickname) {
-        currentNickname = nickname;
+        window.StudentPanel.currentNickname = nickname;
         sessionStorage.setItem('nickname', nickname);
         
         if (nicknameModal) nicknameModal.style.display = 'none';
-        if (nicknameDisplay) nicknameDisplay.textContent = currentNickname;
+        if (nicknameDisplay) nicknameDisplay.textContent = window.StudentPanel.currentNickname;
         
         checkGameStatus();
-        console.log('Nickname set:', currentNickname);
+        console.log('Nickname set:', window.StudentPanel.currentNickname);
     } else {
         alert('Please enter a valid nickname');
     }
@@ -425,16 +428,16 @@ async function checkGameStatus() {
             const status = await response.json();
             
             // Only update DOM if status actually changed to prevent unnecessary reflows
-            if (!lastGameStatus || 
-                lastGameStatus.active !== status.active || 
-                lastGameStatus.current_question !== status.current_question) {
+            if (!window.StudentPanel.lastGameStatus || 
+                window.StudentPanel.lastGameStatus.active !== status.active || 
+                window.StudentPanel.lastGameStatus.current_question !== status.current_question) {
                 
-                lastGameStatus = status;
+                window.StudentPanel.lastGameStatus = status;
                 
                 const gameAlert = document.getElementById('gameAlert');
                 const questionCard = document.getElementById('questionCard');
                 
-                if (status.active === true && !gameJoined && gameAlert) {
+                if (status.active === true && !window.StudentPanel.gameJoined && gameAlert) {
                     gameAlert.style.display = 'block';
                 } else if (gameAlert) {
                     gameAlert.style.display = 'none';
@@ -442,26 +445,26 @@ async function checkGameStatus() {
                 
                 if (status.active === false && questionCard) {
                     questionCard.classList.remove('active');
-                    gameJoined = false;
+                    window.StudentPanel.gameJoined = false;
                 }
                 
-                if (gameJoined && status.current_question) {
+                if (window.StudentPanel.gameJoined && status.current_question) {
                     displayQuestion(status.current_question);
                 }
             }
         } else {
-            if (!lastGameStatus || lastGameStatus.active !== false) {
+            if (!window.StudentPanel.lastGameStatus || window.StudentPanel.lastGameStatus.active !== false) {
                 const gameAlert = document.getElementById('gameAlert');
                 if (gameAlert) gameAlert.style.display = 'none';
-                lastGameStatus = { active: false };
+                window.StudentPanel.lastGameStatus = { active: false };
             }
         }
         
     } catch (error) {
-        if (!lastGameStatus || lastGameStatus.active !== false) {
+        if (!window.StudentPanel.lastGameStatus || window.StudentPanel.lastGameStatus.active !== false) {
             const gameAlert = document.getElementById('gameAlert');
             if (gameAlert) gameAlert.style.display = 'none';
-            lastGameStatus = { active: false };
+            window.StudentPanel.lastGameStatus = { active: false };
         }
     }
 }
@@ -471,12 +474,12 @@ async function joinGame() {
         const response = await fetch('/api/game/join', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nickname: currentNickname })
+            body: JSON.stringify({ nickname: window.StudentPanel.currentNickname })
         });
         
         const result = await response.json();
         if (result.success) {
-            gameJoined = true;
+            window.StudentPanel.gameJoined = true;
             const gameAlert = document.getElementById('gameAlert');
             if (gameAlert) gameAlert.style.display = 'none';
             
@@ -563,7 +566,7 @@ function clearCode() {
     if (output) {
         output.textContent = 'Code cleared. Write some C code and run it!';
         // Preserve word wrap class
-        output.className = isWordWrapEnabled ? 'output word-wrap' : 'output no-wrap';
+        output.className = window.StudentPanel.isWordWrapEnabled ? 'output word-wrap' : 'output no-wrap';
     }
 }
 
@@ -576,9 +579,9 @@ function toggleMaximize() {
     
     if (!container || !btn) return;
     
-    isMaximized = !isMaximized;
+    window.StudentPanel.isMaximized = !window.StudentPanel.isMaximized;
     
-    if (isMaximized) {
+    if (window.StudentPanel.isMaximized) {
         container.classList.add('maximized');
         btn.innerHTML = '⬌ Restore';
         btn.title = 'Restore Split View';
@@ -601,9 +604,9 @@ function toggleOutput() {
     
     if (!container || !btn) return;
     
-    isOutputHidden = !isOutputHidden;
+    window.StudentPanel.isOutputHidden = !window.StudentPanel.isOutputHidden;
     
-    if (isOutputHidden) {
+    if (window.StudentPanel.isOutputHidden) {
         container.classList.add('hide-output');
         btn.innerHTML = '👁️ Show';
         btn.title = 'Show Output Panel';
@@ -625,9 +628,9 @@ function toggleWordWrap() {
     
     if (!btn) return;
     
-    isWordWrapEnabled = !isWordWrapEnabled;
+    window.StudentPanel.isWordWrapEnabled = !window.StudentPanel.isWordWrapEnabled;
     
-    if (isWordWrapEnabled) {
+    if (window.StudentPanel.isWordWrapEnabled) {
         btn.innerHTML = '📄 Wrap';
         btn.classList.remove('active');
         btn.title = 'Word Wrap Enabled';
@@ -641,7 +644,7 @@ function toggleWordWrap() {
     if (window.monacoEditor && window.monacoEditor.updateOptions) {
         try {
             window.monacoEditor.updateOptions({
-                wordWrap: isWordWrapEnabled ? 'on' : 'off'
+                wordWrap: window.StudentPanel.isWordWrapEnabled ? 'on' : 'off'
             });
         } catch (e) {
             console.log('Could not update Monaco word wrap');
@@ -657,7 +660,7 @@ function switchTab(tab) {
     
     if (!editorSection || !outputSection) return;
     
-    currentMobileTab = tab;
+    window.StudentPanel.currentMobileTab = tab;
     
     // Remove active class from all tabs
     tabButtons.forEach(btn => btn.classList.remove('active'));
@@ -680,7 +683,7 @@ function switchTab(tab) {
 
 // Auto-switch to output tab when program runs (mobile only)
 function autoSwitchToOutput() {
-    if (window.innerWidth <= 768 && currentMobileTab === 'editor') {
+    if (window.innerWidth <= 768 && window.StudentPanel.currentMobileTab === 'editor') {
         setTimeout(() => switchTab('output'), 500);
     }
 }
@@ -701,7 +704,7 @@ function detectMobileKeyboard() {
         // If viewport height decreased by more than 150px, keyboard is likely visible
         if (heightDifference > 150 && !isKeyboardOpen) {
             isKeyboardOpen = true;
-            keyboardVisible = true;
+            window.StudentPanel.keyboardVisible = true;
             document.body.classList.add('keyboard-visible');
             console.log('Virtual keyboard detected, height difference:', heightDifference);
             
@@ -712,7 +715,7 @@ function detectMobileKeyboard() {
             
         } else if (heightDifference <= 100 && isKeyboardOpen) {
             isKeyboardOpen = false;
-            keyboardVisible = false;
+            window.StudentPanel.keyboardVisible = false;
             document.body.classList.remove('keyboard-visible');
             console.log('Virtual keyboard hidden');
         }
@@ -735,7 +738,7 @@ function detectMobileKeyboard() {
                 const heightDiff = initialViewportHeight - window.innerHeight;
                 if (heightDiff > 150) {
                     isKeyboardOpen = true;
-                    keyboardVisible = true;
+                    window.StudentPanel.keyboardVisible = true;
                     document.body.classList.add('keyboard-visible');
                     scrollToEditor();
                 }
@@ -748,7 +751,7 @@ function detectMobileKeyboard() {
             const heightDiff = initialViewportHeight - window.innerHeight;
             if (heightDiff <= 100) {
                 isKeyboardOpen = false;
-                keyboardVisible = false;
+                window.StudentPanel.keyboardVisible = false;
                 document.body.classList.remove('keyboard-visible');
             }
         }, 300);
@@ -794,8 +797,8 @@ function updateMobileLayout() {
     if (questionCard && questionCard.classList.contains('active')) totalHeaderHeight += questionCard.offsetHeight + 5;
     if (mobileTabs && mobileTabs.offsetHeight) totalHeaderHeight += mobileTabs.offsetHeight;
     
-    mobileHeaderHeight = totalHeaderHeight;
-    document.documentElement.style.setProperty('--mobile-header-height', mobileHeaderHeight + 'px');
+    window.StudentPanel.mobileHeaderHeight = totalHeaderHeight;
+    document.documentElement.style.setProperty('--mobile-header-height', window.StudentPanel.mobileHeaderHeight + 'px');
 }
 
 // Mobile-specific undo/redo functions
@@ -978,10 +981,10 @@ window.addEventListener('load', function() {
     const nicknameInput = document.getElementById('nicknameInput');
     
     if (savedNickname) {
-        currentNickname = savedNickname;
+        window.StudentPanel.currentNickname = savedNickname;
         if (nicknameModal) nicknameModal.style.display = 'none';
-        if (nicknameDisplay) nicknameDisplay.textContent = currentNickname;
-        console.log('Loaded saved nickname:', currentNickname);
+        if (nicknameDisplay) nicknameDisplay.textContent = window.StudentPanel.currentNickname;
+        console.log('Loaded saved nickname:', window.StudentPanel.currentNickname);
     } else {
         console.log('No saved nickname, showing modal');
         if (nicknameInput) nicknameInput.focus();
