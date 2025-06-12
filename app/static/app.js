@@ -497,6 +497,9 @@ function insertText(text) {
             };
             window.monacoEditor.executeEdits("my-source", [op]);
             window.monacoEditor.focus();
+            
+            // Trigger mobile auto-scroll when inserting text
+            autoScrollOnMobile();
             return;
         } catch (e) {
             console.log('Monaco not ready, using fallback');
@@ -511,6 +514,9 @@ function insertText(text) {
         textarea.value = textarea.value.substring(0, start) + text + textarea.value.substring(end);
         textarea.selectionStart = textarea.selectionEnd = start + text.length;
         textarea.focus();
+        
+        // Trigger mobile auto-scroll when inserting text
+        autoScrollOnMobile();
     }
 }
 
@@ -650,6 +656,80 @@ function autoSwitchToOutput() {
     }
 }
 
+// MOBILE AUTO-SCROLL FUNCTIONALITY
+
+// Simple mobile auto-scroll function
+function autoScrollOnMobile() {
+    // Only on mobile
+    if (window.innerWidth > 768) return;
+    
+    const header = document.querySelector('.header');
+    if (!header) return;
+    
+    // Calculate scroll distance to hide header
+    const scrollDistance = header.offsetHeight + 30; // Include margins
+    
+    // Only scroll if we're not already scrolled past header
+    if (window.scrollY < scrollDistance) {
+        // Smooth scroll up
+        window.scrollTo({
+            top: scrollDistance,
+            behavior: 'smooth'
+        });
+    }
+}
+
+// Setup mobile editor click listeners
+function setupMobileAutoScroll() {
+    if (window.innerWidth > 768) return;
+    
+    console.log('Setting up mobile auto-scroll...');
+    
+    // Get editor elements
+    const editorSection = document.getElementById('editorSection');
+    const editor = document.getElementById('editor');
+    const mobileKeyboard = document.getElementById('mobileKeyboard');
+    
+    // Add click listeners
+    if (editorSection) {
+        editorSection.addEventListener('click', autoScrollOnMobile);
+        editorSection.addEventListener('touchstart', autoScrollOnMobile);
+        console.log('Added auto-scroll to editor section');
+    }
+    
+    if (editor) {
+        editor.addEventListener('click', autoScrollOnMobile);
+        editor.addEventListener('touchstart', autoScrollOnMobile);
+        console.log('Added auto-scroll to editor');
+    }
+    
+    if (mobileKeyboard) {
+        mobileKeyboard.addEventListener('click', autoScrollOnMobile);
+        console.log('Added auto-scroll to mobile keyboard');
+    }
+    
+    // Monaco editor focus (wait for it to be ready)
+    setTimeout(() => {
+        if (window.monacoEditor) {
+            try {
+                window.monacoEditor.onDidFocusEditorText(autoScrollOnMobile);
+                console.log('Added auto-scroll to Monaco focus');
+            } catch (e) {
+                console.log('Monaco not ready for focus listener');
+            }
+        }
+    }, 1000);
+    
+    // Fallback editor
+    const fallbackEditor = document.getElementById('fallbackEditor');
+    if (fallbackEditor) {
+        fallbackEditor.addEventListener('focus', autoScrollOnMobile);
+        fallbackEditor.addEventListener('click', autoScrollOnMobile);
+        fallbackEditor.addEventListener('touchstart', autoScrollOnMobile);
+        console.log('Added auto-scroll to fallback editor');
+    }
+}
+
 // Application initialization with proper sequencing for production reliability
 window.addEventListener('load', function() {
     console.log('App loading...');
@@ -695,6 +775,9 @@ window.addEventListener('load', function() {
     
     // Initialize enhanced UI features
     initializeEnhancedUI();
+    
+    // Initialize mobile auto-scroll (wait for everything to load)
+    setTimeout(setupMobileAutoScroll, 3000);
 });
 
 // Initialize enhanced UI features
@@ -724,6 +807,11 @@ function initializeEnhancedUI() {
     window.addEventListener('resize', function() {
         if (window.monacoEditor && window.monacoEditor.layout) {
             window.monacoEditor.layout();
+        }
+        
+        // Re-setup mobile auto-scroll on resize
+        if (window.innerWidth <= 768) {
+            setTimeout(setupMobileAutoScroll, 500);
         }
     });
 }
@@ -757,3 +845,7 @@ window.toggleOutput = toggleOutput;
 window.toggleWordWrap = toggleWordWrap;
 window.switchTab = switchTab;
 window.autoSwitchToOutput = autoSwitchToOutput;
+
+// Export mobile auto-scroll functions
+window.autoScrollOnMobile = autoScrollOnMobile;
+window.setupMobileAutoScroll = setupMobileAutoScroll;
