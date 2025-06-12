@@ -139,7 +139,27 @@ function setupSocketListeners() {
         
         // Only reset UI on confirmed program termination to prevent premature state changes
         if (isProgramComplete(data)) {
-            console.log('Program completion detected, resetting UI state');
+            // Auto-submit IIFE for game mode (inserted block)
+            (async () => {
+                // Poll for latest game status before auto-submit
+                const resp = await fetch('/api/game/status');
+                const status = await resp.json();
+                if (!status.active) return;
+                if (!gameJoined) return;
+                const nickname = sessionStorage.getItem('nickname');
+                const code = getCodeFromEditor();
+                const submitResp = await fetch('/api/game/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname, code })
+                });
+                const result = await submitResp.json();
+                if (result.correct) {
+                    alert('Correct! Score: ' + result.score);
+                } else {
+                    output.textContent += '\nWrong answer. Try again.\n';
+                }
+            })();
             setTimeout(resetUIState, 500);
         }
     });

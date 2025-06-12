@@ -161,6 +161,9 @@ def save_game_state():
         json.dump(current_game, f, indent=2)
 
 def validate_output(expected, actual):
+    # Convert literal "\n" in expected to actual newlines
+    if '\\n' in expected:
+        expected = expected.replace('\\n', '\n')
     if expected == "variable":
         return len(actual.strip()) > 0
     return expected.strip() == actual.strip()
@@ -308,6 +311,75 @@ def get_leaderboard():
 @app.route('/leaderboard')
 def leaderboard_page():
     return render_template('leaderboard.html')
+
+
+# Endpoint for student code submission in game mode
+@app.route('/api/game/submit', methods=['POST'])
+def submit_answer():
+    data = request.json or {}
+    nickname = data.get('nickname', '')
+    code = data.get('code', '').strip()
+    if not current_game['active']:
+        return jsonify({'error': 'No active game'}), 400
+    if nickname not in current_game['participants']:
+        return jsonify({'error': 'Player not joined'}), 400
+
+    # Prepare temporary directory for compilation
+    temp_dir = tempfile.mkdtemp(dir=TEMP_DIR, prefix=f'submit_{nickname}_')
+    c_file = os.path.join(temp_dir, 'program.c')
+    exe_file = os.path.join(temp_dir, 'program')
+    try:
+        with open(c_file, 'w', encoding='utf-8') as f:
+            f.write(code)
+
+        # Compile
+        compile_result = subprocess.run(
+            ['gcc', '-Wall', '-Wextra', '-std=c99', '-O1', '-o', exe_file, c_file],
+            capture_output=True, text=True, timeout=COMPILE_TIMEOUT
+        )
+        if compile_result.returncode != 0:
+            shutil.rmtree(temp_dir)
+            return jsonify({
+                'correct': False,
+                'output': compile_result.stderr,
+                'error': 'compilation'
+            })
+
+        # Run and capture output
+        run_result = subprocess.run(
+            [exe_file],
+            capture_output=True, text=True, timeout=EXECUTION_TIMEOUT
+        )
+        actual_output = run_result.stdout
+
+        # Validate
+        expected = current_game['current_question'].get('expected_output', '')
+        is_correct = validate_output(expected, actual_output)
+
+        # Update score and submissions
+        participant = current_game['participants'][nickname]
+        participant['submissions'].append({
+            'question_index': current_game['question_index'],
+            'timestamp': datetime.now().isoformat(),
+            'correct': is_correct
+        })
+        if is_correct:
+            participant['current_score'] += 1
+
+        save_game_state()
+        # Notify teacher panel
+        socketio.emit('score_updated', {
+            'nickname': nickname,
+            'score': participant['current_score']
+        }, namespace='/')
+
+        return jsonify({
+            'correct': is_correct,
+            'output': actual_output,
+            'score': participant['current_score']
+        })
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 def pty_reader(session_id, master_fd):
     """Read PTY output and emit to client via SocketIO"""
