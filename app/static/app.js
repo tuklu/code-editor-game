@@ -20,6 +20,8 @@ let isMaximized = false;
 let isOutputHidden = false;
 let isWordWrapEnabled = true;
 let currentMobileTab = 'editor';
+let keyboardVisible = false;
+let mobileHeaderHeight = 150;
 
 // Editor abstraction - handles Monaco/fallback gracefully to avoid recursion
 function getCodeFromEditor() {
@@ -592,22 +594,21 @@ function toggleMaximize() {
     }
 }
 
-// Hide/Show Output Panel
+// FIXED: Hide/Show Output Panel (separate from maximize)
 function toggleOutput() {
-    const outputSection = document.getElementById('outputSection');
-    const btn = document.getElementById('hideBtn');
     const container = document.getElementById('editorContainer');
+    const btn = document.getElementById('hideBtn');
     
-    if (!outputSection || !btn || !container) return;
+    if (!container || !btn) return;
     
     isOutputHidden = !isOutputHidden;
     
     if (isOutputHidden) {
-        container.classList.add('maximized');
+        container.classList.add('hide-output');
         btn.innerHTML = '👁️ Show';
         btn.title = 'Show Output Panel';
     } else {
-        container.classList.remove('maximized');
+        container.classList.remove('hide-output');
         btn.innerHTML = '👁️ Hide';
         btn.title = 'Hide Output Panel';
     }
@@ -618,25 +619,33 @@ function toggleOutput() {
     }
 }
 
-// Toggle Word Wrap in Output
+// FIXED: Toggle Word Wrap in Editor (moved from output)
 function toggleWordWrap() {
-    const output = document.getElementById('output');
     const btn = document.getElementById('wrapBtn');
     
-    if (!output || !btn) return;
+    if (!btn) return;
     
     isWordWrapEnabled = !isWordWrapEnabled;
     
     if (isWordWrapEnabled) {
-        output.classList.remove('no-wrap');
-        output.classList.add('word-wrap');
         btn.innerHTML = '📄 Wrap';
         btn.classList.remove('active');
+        btn.title = 'Word Wrap Enabled';
     } else {
-        output.classList.remove('word-wrap');
-        output.classList.add('no-wrap');
         btn.innerHTML = '📜 No Wrap';
         btn.classList.add('active');
+        btn.title = 'Word Wrap Disabled';
+    }
+    
+    // Apply word wrap to Monaco editor if available
+    if (window.monacoEditor && window.monacoEditor.updateOptions) {
+        try {
+            window.monacoEditor.updateOptions({
+                wordWrap: isWordWrapEnabled ? 'on' : 'off'
+            });
+        } catch (e) {
+            console.log('Could not update Monaco word wrap');
+        }
     }
 }
 
@@ -676,7 +685,155 @@ function autoSwitchToOutput() {
     }
 }
 
-// MOBILE AUTO-SCROLL FUNCTIONALITY
+// MOBILE KEYBOARD AND LAYOUT OPTIMIZATION
+
+// Detect virtual keyboard on mobile
+function detectMobileKeyboard() {
+    if (window.innerWidth > 768) return;
+    
+    let initialViewportHeight = window.innerHeight;
+    let isKeyboardOpen = false;
+    
+    function handleViewportChange() {
+        const currentHeight = window.innerHeight;
+        const heightDifference = initialViewportHeight - currentHeight;
+        
+        // If viewport height decreased by more than 150px, keyboard is likely visible
+        if (heightDifference > 150 && !isKeyboardOpen) {
+            isKeyboardOpen = true;
+            keyboardVisible = true;
+            document.body.classList.add('keyboard-visible');
+            console.log('Virtual keyboard detected, height difference:', heightDifference);
+            
+            // Immediate scroll to editor
+            setTimeout(() => {
+                scrollToEditor();
+            }, 100);
+            
+        } else if (heightDifference <= 100 && isKeyboardOpen) {
+            isKeyboardOpen = false;
+            keyboardVisible = false;
+            document.body.classList.remove('keyboard-visible');
+            console.log('Virtual keyboard hidden');
+        }
+        
+        updateMobileLayout();
+    }
+    
+    // Use multiple event listeners for better detection
+    window.addEventListener('resize', handleViewportChange);
+    
+    // Also listen to visual viewport if available (more accurate)
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', handleViewportChange);
+    }
+    
+    // Listen to focus/blur events on input elements
+    document.addEventListener('focusin', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.contentEditable === 'true') {
+            setTimeout(() => {
+                const heightDiff = initialViewportHeight - window.innerHeight;
+                if (heightDiff > 150) {
+                    isKeyboardOpen = true;
+                    keyboardVisible = true;
+                    document.body.classList.add('keyboard-visible');
+                    scrollToEditor();
+                }
+            }, 300);
+        }
+    });
+    
+    document.addEventListener('focusout', function(e) {
+        setTimeout(() => {
+            const heightDiff = initialViewportHeight - window.innerHeight;
+            if (heightDiff <= 100) {
+                isKeyboardOpen = false;
+                keyboardVisible = false;
+                document.body.classList.remove('keyboard-visible');
+            }
+        }, 300);
+    });
+}
+
+// Scroll to bring editor into view when keyboard appears
+function scrollToEditor() {
+    if (window.innerWidth > 768) return;
+    
+    const editorContainer = document.getElementById('editorContainer');
+    const mobileTabs = document.getElementById('mobileTabs');
+    
+    if (editorContainer && mobileTabs) {
+        // Calculate the position to scroll to - align with top of mobile tabs
+        const tabsRect = mobileTabs.getBoundingClientRect();
+        const targetScrollPosition = window.scrollY + tabsRect.top - 10; // 10px padding from top
+        
+        // Smooth scroll to position
+        window.scrollTo({
+            top: Math.max(0, targetScrollPosition),
+            behavior: 'smooth'
+        });
+        
+        console.log('Scrolled to editor position, target:', targetScrollPosition);
+    }
+}
+
+// Update mobile layout based on current state
+function updateMobileLayout() {
+    if (window.innerWidth > 768) return;
+    
+    // Calculate dynamic header height
+    const header = document.getElementById('header');
+    const gameAlert = document.getElementById('gameAlert');
+    const questionCard = document.getElementById('questionCard');
+    const mobileTabs = document.getElementById('mobileTabs');
+    
+    let totalHeaderHeight = 0;
+    
+    if (header && header.offsetHeight) totalHeaderHeight += header.offsetHeight + 8;
+    if (gameAlert && gameAlert.style.display !== 'none') totalHeaderHeight += gameAlert.offsetHeight + 5;
+    if (questionCard && questionCard.classList.contains('active')) totalHeaderHeight += questionCard.offsetHeight + 5;
+    if (mobileTabs && mobileTabs.offsetHeight) totalHeaderHeight += mobileTabs.offsetHeight;
+    
+    mobileHeaderHeight = totalHeaderHeight;
+    document.documentElement.style.setProperty('--mobile-header-height', mobileHeaderHeight + 'px');
+}
+
+// Mobile-specific undo/redo functions
+function undoCode() {
+    if (window.monacoEditor && window.monacoEditor.trigger) {
+        try {
+            window.monacoEditor.trigger('keyboard', 'undo', null);
+            return;
+        } catch (e) {
+            console.log('Monaco undo not available');
+        }
+    }
+    
+    // Fallback for textarea
+    const textarea = document.getElementById('fallbackEditor');
+    if (textarea && textarea.focus) {
+        textarea.focus();
+        document.execCommand('undo');
+    }
+}
+
+function redoCode() {
+    if (window.monacoEditor && window.monacoEditor.trigger) {
+        try {
+            window.monacoEditor.trigger('keyboard', 'redo', null);
+            return;
+        } catch (e) {
+            console.log('Monaco redo not available');
+        }
+    }
+    
+    // Fallback for textarea
+    const textarea = document.getElementById('fallbackEditor');
+    if (textarea && textarea.focus) {
+        textarea.focus();
+        document.execCommand('redo');
+    }
+}
 
 // Simple mobile auto-scroll function
 function autoScrollOnMobile() {
@@ -699,41 +856,87 @@ function autoScrollOnMobile() {
     }
 }
 
-// Setup mobile editor click listeners
+// Setup mobile editor click listeners and optimizations
 function setupMobileAutoScroll() {
     if (window.innerWidth > 768) return;
     
-    console.log('Setting up mobile auto-scroll...');
+    console.log('Setting up mobile optimizations...');
+    
+    // Initialize keyboard detection
+    detectMobileKeyboard();
+    
+    // Update layout when elements change
+    updateMobileLayout();
+    
+    // Watch for game status changes that affect layout
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'attributes' || mutation.type === 'childList') {
+                setTimeout(updateMobileLayout, 100);
+            }
+        });
+    });
+    
+    // Observe game alert and question card changes
+    const gameAlert = document.getElementById('gameAlert');
+    const questionCard = document.getElementById('questionCard');
+    
+    if (gameAlert) observer.observe(gameAlert, { attributes: true, attributeFilter: ['style', 'class'] });
+    if (questionCard) observer.observe(questionCard, { attributes: true, attributeFilter: ['class'] });
     
     // Get editor elements
     const editorSection = document.getElementById('editorSection');
     const editor = document.getElementById('editor');
     const mobileKeyboard = document.getElementById('mobileKeyboard');
     
-    // Add click listeners
-    if (editorSection) {
-        editorSection.addEventListener('click', autoScrollOnMobile);
-        editorSection.addEventListener('touchstart', autoScrollOnMobile);
-        console.log('Added auto-scroll to editor section');
-    }
-    
+    // Add focus listeners to editor elements
     if (editor) {
-        editor.addEventListener('click', autoScrollOnMobile);
-        editor.addEventListener('touchstart', autoScrollOnMobile);
-        console.log('Added auto-scroll to editor');
+        editor.addEventListener('click', function() {
+            console.log('Editor clicked');
+            setTimeout(() => {
+                scrollToEditor();
+                updateMobileLayout();
+            }, 300);
+        });
+        editor.addEventListener('touchstart', function() {
+            console.log('Editor touched');
+            setTimeout(() => {
+                scrollToEditor();
+                updateMobileLayout();
+            }, 300);
+        });
+        console.log('Added mobile optimization to editor');
     }
     
     if (mobileKeyboard) {
-        mobileKeyboard.addEventListener('click', autoScrollOnMobile);
-        console.log('Added auto-scroll to mobile keyboard');
+        mobileKeyboard.addEventListener('click', function() {
+            setTimeout(updateMobileLayout, 100);
+        });
+        console.log('Added mobile optimization to mobile keyboard');
     }
     
     // Monaco editor focus (wait for it to be ready)
     setTimeout(() => {
         if (window.monacoEditor) {
             try {
-                window.monacoEditor.onDidFocusEditorText(autoScrollOnMobile);
-                console.log('Added auto-scroll to Monaco focus');
+                window.monacoEditor.onDidFocusEditorText(function() {
+                    console.log('Monaco editor focused');
+                    setTimeout(() => {
+                        scrollToEditor();
+                        updateMobileLayout();
+                    }, 300);
+                });
+                
+                // Also listen to when user clicks in Monaco
+                window.monacoEditor.onMouseDown(function() {
+                    console.log('Monaco editor mouse down');
+                    setTimeout(() => {
+                        scrollToEditor();
+                        updateMobileLayout();
+                    }, 300);
+                });
+                
+                console.log('Added mobile optimization to Monaco focus');
             } catch (e) {
                 console.log('Monaco not ready for focus listener');
             }
@@ -743,10 +946,24 @@ function setupMobileAutoScroll() {
     // Fallback editor
     const fallbackEditor = document.getElementById('fallbackEditor');
     if (fallbackEditor) {
-        fallbackEditor.addEventListener('focus', autoScrollOnMobile);
-        fallbackEditor.addEventListener('click', autoScrollOnMobile);
-        fallbackEditor.addEventListener('touchstart', autoScrollOnMobile);
-        console.log('Added auto-scroll to fallback editor');
+        fallbackEditor.addEventListener('focus', function() {
+            console.log('Fallback editor focused');
+            setTimeout(() => {
+                scrollToEditor();
+                updateMobileLayout();
+            }, 300);
+        });
+        fallbackEditor.addEventListener('click', function() {
+            console.log('Fallback editor clicked');
+            setTimeout(() => {
+                scrollToEditor();
+                updateMobileLayout();
+            }, 300);
+        });
+        fallbackEditor.addEventListener('blur', function() {
+            setTimeout(updateMobileLayout, 300);
+        });
+        console.log('Added mobile optimization to fallback editor');
     }
 }
 
@@ -796,8 +1013,8 @@ window.addEventListener('load', function() {
     // Initialize enhanced UI features
     initializeEnhancedUI();
     
-    // Initialize mobile auto-scroll (wait for everything to load)
-    setTimeout(setupMobileAutoScroll, 3000);
+    // Initialize mobile optimizations (wait for everything to load)
+    setTimeout(setupMobileAutoScroll, 1000);
 });
 
 // Initialize enhanced UI features
@@ -829,9 +1046,9 @@ function initializeEnhancedUI() {
             window.monacoEditor.layout();
         }
         
-        // Re-setup mobile auto-scroll on resize
+        // Re-setup mobile optimizations on resize
         if (window.innerWidth <= 768) {
-            setTimeout(setupMobileAutoScroll, 500);
+            setTimeout(setupMobileAutoScroll, 200);
         }
     });
 }
@@ -866,6 +1083,11 @@ window.toggleWordWrap = toggleWordWrap;
 window.switchTab = switchTab;
 window.autoSwitchToOutput = autoSwitchToOutput;
 
-// Export mobile auto-scroll functions
+// Export mobile optimization functions
 window.autoScrollOnMobile = autoScrollOnMobile;
 window.setupMobileAutoScroll = setupMobileAutoScroll;
+window.undoCode = undoCode;
+window.redoCode = redoCode;
+window.detectMobileKeyboard = detectMobileKeyboard;
+window.updateMobileLayout = updateMobileLayout;
+window.scrollToEditor = scrollToEditor;

@@ -21,26 +21,26 @@
     </div>
 
     <div class="container">
-        <!-- Header -->
-        <div class="header">
+        <!-- Header (moves to top on mobile) -->
+        <div class="header" id="header">
             <div class="user-info">
                 <h2>Welcome, <span id="nicknameDisplay">Coder</span>!</h2>
                 <p>Ready to write some C code?</p>
             </div>
-            <div>
+            <div class="teacher-login">
                 <a href="/teacher" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px;">👩‍🏫 Teacher Login</a>
             </div>
         </div>
 
-        <!-- Game Alert -->
-        <div id="gameAlert" class="game-alert">
+        <!-- Game Alert (moves to top on mobile) -->
+        <div id="gameAlert" class="game-alert mobile-top">
             <h3>🎮 Live Coding Challenge!</h3>
             <p>Your teacher has started a coding challenge. Join now!</p>
             <button class="join-button" onclick="joinGame()">Join Challenge</button>
         </div>
 
-        <!-- Question Card -->
-        <div id="questionCard" class="question-card">
+        <!-- Question Card (moves to top on mobile) -->
+        <div id="questionCard" class="question-card mobile-top">
             <div class="question-title" id="questionTitle">Challenge Title</div>
             <div class="question-description" id="questionDescription">Challenge description goes here...</div>
             <div class="question-hint">
@@ -61,8 +61,17 @@
                 <div class="editor-header">
                     <span>📝 Code Editor</span>
                     <div class="header-controls">
-                        <button class="control-button" onclick="toggleMaximize()" id="maximizeBtn" title="Maximize Editor">
+                        <button class="control-button" onclick="toggleWordWrap()" id="wrapBtn" title="Toggle Word Wrap">
+                            📄 Wrap
+                        </button>
+                        <button class="control-button desktop-only" onclick="toggleMaximize()" id="maximizeBtn" title="Maximize Editor">
                             ⛶ Maximize
+                        </button>
+                        <button class="control-button mobile-only" onclick="undoCode()" id="undoBtn" title="Undo">
+                            ↶ Undo
+                        </button>
+                        <button class="control-button mobile-only" onclick="redoCode()" id="redoBtn" title="Redo">
+                            ↷ Redo
                         </button>
                     </div>
                 </div>
@@ -79,7 +88,7 @@
                     <button class="mobile-key" onclick="insertText('&apos;')">'</button>
                     <button class="mobile-key wide" onclick="insertText('    ')">TAB</button>
                 </div>
-                <div class="controls">
+                <div class="controls" id="editorControls">
                     <button id="runButton" class="run-button" onclick="runCode()" disabled>▶ Run Code</button>
                     <button id="reconnectButton" class="clear-button" onclick="reconnectSocket()" style="background: #2196F3; display: none;">🔄 Reconnect</button>
                     <button class="clear-button" onclick="clearCode()">🗑 Clear</button>
@@ -91,9 +100,6 @@
                 <div class="editor-header">
                     <span>📤 Output</span>
                     <div class="header-controls">
-                        <button class="control-button" onclick="toggleWordWrap()" id="wrapBtn" title="Toggle Word Wrap">
-                            📄 Wrap
-                        </button>
                         <button class="control-button" onclick="toggleOutput()" id="hideBtn" title="Hide Output Panel">
                             👁️ Hide
                         </button>
@@ -121,149 +127,5 @@ Interactive input (scanf) is fully supported.
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="/static/monaco-loader.js"></script>
     <script src="/static/app.js"></script>
-    
-    <script>
-        // Enhanced UI Controls
-        let isMaximized = false;
-        let isOutputHidden = false;
-        let isWordWrapEnabled = true;
-        let currentMobileTab = 'editor';
-
-        // Maximize/Restore Editor
-        function toggleMaximize() {
-            const container = document.getElementById('editorContainer');
-            const btn = document.getElementById('maximizeBtn');
-            
-            isMaximized = !isMaximized;
-            
-            if (isMaximized) {
-                container.classList.add('maximized');
-                btn.innerHTML = '⬌ Restore';
-                btn.title = 'Restore Split View';
-            } else {
-                container.classList.remove('maximized');
-                btn.innerHTML = '⛶ Maximize';
-                btn.title = 'Maximize Editor';
-            }
-            
-            // Trigger Monaco resize if available
-            if (window.monacoEditor && window.monacoEditor.layout) {
-                setTimeout(() => window.monacoEditor.layout(), 100);
-            }
-        }
-
-        // Hide/Show Output Panel
-        function toggleOutput() {
-            const outputSection = document.getElementById('outputSection');
-            const btn = document.getElementById('hideBtn');
-            const container = document.getElementById('editorContainer');
-            
-            isOutputHidden = !isOutputHidden;
-            
-            if (isOutputHidden) {
-                container.classList.add('maximized');
-                btn.innerHTML = '👁️ Show';
-                btn.title = 'Show Output Panel';
-            } else {
-                container.classList.remove('maximized');
-                btn.innerHTML = '👁️ Hide';
-                btn.title = 'Hide Output Panel';
-            }
-            
-            // Trigger Monaco resize
-            if (window.monacoEditor && window.monacoEditor.layout) {
-                setTimeout(() => window.monacoEditor.layout(), 100);
-            }
-        }
-
-        // Toggle Word Wrap in Output
-        function toggleWordWrap() {
-            const output = document.getElementById('output');
-            const btn = document.getElementById('wrapBtn');
-            
-            isWordWrapEnabled = !isWordWrapEnabled;
-            
-            if (isWordWrapEnabled) {
-                output.classList.remove('no-wrap');
-                output.classList.add('word-wrap');
-                btn.innerHTML = '📄 Wrap';
-                btn.classList.remove('active');
-            } else {
-                output.classList.remove('word-wrap');
-                output.classList.add('no-wrap');
-                btn.innerHTML = '📜 No Wrap';
-                btn.classList.add('active');
-            }
-        }
-
-        // Mobile Tab Switching
-        function switchTab(tab) {
-            const editorSection = document.getElementById('editorSection');
-            const outputSection = document.getElementById('outputSection');
-            const tabButtons = document.querySelectorAll('.tab-button');
-            
-            currentMobileTab = tab;
-            
-            // Remove active class from all tabs
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            
-            if (tab === 'editor') {
-                editorSection.classList.remove('hidden');
-                outputSection.classList.add('hidden');
-                tabButtons[0].classList.add('active');
-                
-                // Trigger Monaco resize when switching to editor
-                if (window.monacoEditor && window.monacoEditor.layout) {
-                    setTimeout(() => window.monacoEditor.layout(), 100);
-                }
-            } else {
-                editorSection.classList.add('hidden');
-                outputSection.classList.remove('hidden');
-                tabButtons[1].classList.add('active');
-            }
-        }
-
-        // Auto-switch to output tab when program runs (mobile only)
-        function autoSwitchToOutput() {
-            if (window.innerWidth <= 768 && currentMobileTab === 'editor') {
-                setTimeout(() => switchTab('output'), 500);
-            }
-        }
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            // Ctrl/Cmd + M = Maximize
-            if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
-                e.preventDefault();
-                toggleMaximize();
-            }
-            
-            // Ctrl/Cmd + H = Hide Output
-            if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
-                e.preventDefault();
-                toggleOutput();
-            }
-            
-            // Ctrl/Cmd + W = Toggle Word Wrap
-            if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
-                e.preventDefault();
-                toggleWordWrap();
-            }
-        });
-
-        // Handle window resize
-        window.addEventListener('resize', function() {
-            if (window.monacoEditor && window.monacoEditor.layout) {
-                window.monacoEditor.layout();
-            }
-        });
-
-        // Export functions globally
-        window.toggleMaximize = toggleMaximize;
-        window.toggleOutput = toggleOutput;
-        window.toggleWordWrap = toggleWordWrap;
-        window.switchTab = switchTab;
-        window.autoSwitchToOutput = autoSwitchToOutput;
-    </script>
 </body>
 </html>

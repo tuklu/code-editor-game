@@ -166,7 +166,16 @@ body {
     position: relative;
 }
 
-/* Maximized state */
+/* Hide output state (separate from maximized) */
+.editor-container.hide-output {
+    grid-template-columns: 1fr;
+}
+
+.editor-container.hide-output .output-section {
+    display: none;
+}
+
+/* Maximized state (for maximize button) */
 .editor-container.maximized {
     grid-template-columns: 1fr;
 }
@@ -436,41 +445,133 @@ body {
 @media (min-width: 769px) {
     .mobile-tabs { display: none !important; }
     .mobile-keyboard { display: none !important; }
+    .mobile-only { display: none !important; }
+    .desktop-only { display: inline-block !important; }
 }
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
-    body { overflow: visible; }
+    body { 
+        overflow: visible;
+        /* Prevent zoom on input focus */
+        -webkit-text-size-adjust: 100%;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
     
     .container {
         height: auto;
         min-height: 100vh;
-        padding: 10px;
+        padding: 5px;
+        /* Use flexbox for better mobile layout control */
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Mobile-specific element hiding */
+    .teacher-login {
+        display: none !important;
+    }
+    
+    .desktop-only {
+        display: none !important;
+    }
+    
+    .mobile-only {
+        display: inline-block !important;
+    }
+    
+    /* Move elements to top on mobile */
+    .mobile-top {
+        order: -1;
     }
     
     .header {
+        order: -2;
         flex-direction: column;
-        gap: 10px;
+        gap: 5px;
         text-align: center;
-        padding: 15px;
+        padding: 10px;
+        margin-bottom: 8px;
+        /* Compact header on mobile */
+        min-height: auto;
+    }
+    
+    .user-info h2 {
+        font-size: 1.1rem;
+        margin-bottom: 0;
+    }
+    
+    .user-info p {
+        font-size: 0.8rem;
+        margin: 0;
+    }
+    
+    /* Mobile tabs positioning */
+    .mobile-tabs {
+        display: flex;
+        order: 0;
+        margin-bottom: 0;
+        border-radius: 10px 10px 0 0;
     }
     
     .editor-container {
         grid-template-columns: 1fr;
         position: relative;
-        height: auto;
-        min-height: 70vh;
+        flex: 1;
+        min-height: 0;
+        /* Dynamic height based on viewport and keyboard */
+        height: calc(100vh - var(--mobile-header-height, 150px));
+        max-height: calc(100vh - var(--mobile-header-height, 150px));
     }
     
-    .mobile-tabs {
-        display: flex;
-        order: -1;
+    /* Keyboard detection styles */
+    .keyboard-visible .editor-container {
+        height: calc(100vh - var(--mobile-header-height, 150px) - 120px) !important;
+        max-height: calc(100vh - var(--mobile-header-height, 150px) - 120px) !important;
+    }
+    
+    .keyboard-visible .controls {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 1000 !important;
+        background: #1e1e1e !important;
+        border-top: 2px solid #4CAF50 !important;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.5) !important;
+        padding: 8px 12px !important;
+    }
+    
+    .keyboard-visible .mobile-keyboard {
+        position: fixed !important;
+        bottom: 60px !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 999 !important;
+        background: #2d2d2d !important;
+        border-top: 1px solid #444 !important;
+        padding: 6px !important;
+    }
+    
+    /* Force scroll behavior when keyboard is visible */
+    .keyboard-visible {
+        overflow-y: auto !important;
+    }
+    
+    .keyboard-visible .container {
+        padding-bottom: 120px !important;
     }
     
     .editor-section,
     .output-section {
         border-radius: 0 0 10px 10px;
         border-top: none;
+        flex: 1;
+        min-height: 0;
     }
     
     .editor-section.hidden,
@@ -478,15 +579,127 @@ body {
         display: none;
     }
     
-    .mobile-keyboard { display: flex; }
+    /* Prevent output section from appearing below on mobile tabs */
+    .mobile-tabs ~ .editor-container .output-section {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 0 0 10px 10px;
+    }
     
-    #editor { height: 50vh; }
-    .output { height: 50vh; }
+    .mobile-tabs ~ .editor-container .editor-section {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 0 0 10px 10px;
+    }
     
-    .controls { padding: 12px 15px; }
+    .mobile-keyboard { 
+        display: flex;
+        /* Make mobile keyboard more compact */
+        padding: 8px;
+        gap: 4px;
+    }
     
-    .run-button { font-size: 13px; padding: 10px 20px; }
-    .clear-button { font-size: 11px; padding: 10px 12px; min-width: 60px; }
+    .mobile-key {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+    
+    #editor { 
+        flex: 1;
+        min-height: 0;
+    }
+    
+    .output { 
+        flex: 1;
+        min-height: 0;
+        font-size: 12px;
+        padding: 15px;
+    }
+    
+    .controls { 
+        padding: 10px 12px;
+        /* Ensure controls don't take too much space */
+        flex-shrink: 0;
+        min-height: 50px;
+    }
+    
+    .run-button { 
+        font-size: 12px; 
+        padding: 8px 16px;
+        min-height: 36px;
+    }
+    
+    .clear-button { 
+        font-size: 10px; 
+        padding: 8px 10px; 
+        min-width: 45px;
+    }
+    
+    /* Input section optimization */
+    .input-section {
+        padding: 10px 12px;
+        flex-shrink: 0;
+    }
+    
+    #inputField {
+        padding: 8px;
+        font-size: 12px;
+    }
+    
+    .input-hint {
+        font-size: 10px;
+        margin-top: 3px;
+    }
+    
+    /* Game elements compacting */
+    .game-alert {
+        padding: 12px;
+        margin-bottom: 5px;
+        text-align: center;
+    }
+    
+    .game-alert h3 {
+        font-size: 1.2rem;
+        margin-bottom: 5px;
+    }
+    
+    .game-alert p {
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+    }
+    
+    .join-button {
+        padding: 8px 20px;
+        font-size: 14px;
+        margin-top: 5px;
+    }
+    
+    .question-card {
+        padding: 15px;
+        margin-bottom: 5px;
+    }
+    
+    .question-title {
+        font-size: 1.2rem;
+        margin-bottom: 8px;
+    }
+    
+    .question-description {
+        font-size: 0.9rem;
+        line-height: 1.4;
+        margin-bottom: 8px;
+    }
+    
+    .question-hint {
+        padding: 8px;
+        font-size: 0.8rem;
+    }
 }
 
 /* Very small screens */
