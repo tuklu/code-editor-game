@@ -6,16 +6,16 @@ services:
     ports:
       - "5050:5000"
     volumes:
-      # Mount the app directory for development (read-write for live updates)
+      # Mount the app directory for development
       - ./app:/app:rw
       # Create named volumes for data persistence
       - app_data:/app/data
       - app_logs:/app/logs
     environment:
       - FLASK_ENV=development
-      - FLASK_DEBUG=0  # Disable debug in Docker for better performance
+      - FLASK_DEBUG=0
       - PYTHONUNBUFFERED=1
-      - EVENTLET_HUB=poll  # Better for Docker
+      - EVENTLET_HUB=poll
       - MAX_SESSIONS=30
       - COMPILE_TIMEOUT=15
       - EXECUTION_TIMEOUT=30
@@ -35,7 +35,7 @@ services:
           memory: 256M
     # Health check
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5050/api/game/status"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/game/status"]
       interval: 30s
       timeout: 10s
       retries: 3
